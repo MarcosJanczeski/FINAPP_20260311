@@ -4,9 +4,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../shared/constants/routes';
 import { RoutePlaceholder } from '../components/RoutePlaceholder';
 import { useAuth } from '../hooks/useAuth';
+import { useAppContainer } from '../hooks/useAppContainer';
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const container = useAppContainer();
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,7 +20,16 @@ export function LoginPage() {
 
     try {
       await login({ email, password });
-      navigate(ROUTES.welcome, { replace: true });
+
+      const currentSession = await container.useCases.getCurrentSession.execute();
+      if (!currentSession) {
+        throw new Error('Nao foi possivel obter a sessao atual.');
+      }
+
+      const setup = await container.useCases.getWelcomeSetup.execute(currentSession.userId);
+      const isWelcomeCompleted = Boolean(setup.person && setup.controlCenter);
+
+      navigate(isWelcomeCompleted ? ROUTES.dashboard : ROUTES.welcome, { replace: true });
     } catch (currentError) {
       setError(currentError instanceof Error ? currentError.message : 'Falha no login.');
     }

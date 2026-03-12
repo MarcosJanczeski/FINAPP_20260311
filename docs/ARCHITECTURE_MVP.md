@@ -129,6 +129,10 @@ Consequência técnica:
 
 * cada etapa deve ser implementável como módulo independente sem acoplamento circular
 * transições entre etapas devem depender de casos de uso (e não de acesso direto à infraestrutura)
+* redirecionamento pós-auth deve ser orientado por estado de onboarding:
+  * signup -> boas-vindas
+  * login com onboarding completo (pessoa + centro) -> dashboard
+  * login com onboarding incompleto -> boas-vindas
 
 ---
 
@@ -424,6 +428,23 @@ viewer
 
 ---
 
+# Evolução futura — Fluxo Inter-Center
+
+Para lançamentos entre centros (ex.: negócio -> pessoal), a arquitetura deve suportar:
+
+* criação de vínculo de origem/destino (`crossCenterLinkId` ou equivalente)
+* entrada pendente no centro de destino com aceite explícito
+* possibilidade de ajuste no destino antes da confirmação
+* rejeição com retorno de status/motivo para o centro de origem
+* ação posterior no origem: ajustar e reenviar ou cancelar
+* trilha de auditoria ponta a ponta entre os dois centros
+
+Observação:
+
+* esta capacidade é evolução futura e não bloqueia o escopo estrutural do MVP atual
+
+---
+
 # Regras Financeiras Fundamentais
 
 Estas regras devem ser respeitadas desde o MVP.
@@ -463,11 +484,31 @@ parcelas futuras
 margem do orçamento
 ```
 
+Definições obrigatórias:
+
+```text
+comprometido = realizado + previsão
+previsão = a pagar/receber + recorrência não confirmada
+```
+
+Invariante:
+
+```text
+a previsão base não inclui a própria margem orçamentária (evita dupla contagem)
+```
+
 ---
 
 ### Gráfico e timeline devem usar a mesma base
 
 O gráfico mensal e a timeline diária devem refletir exatamente os mesmos dados.
+
+Regra adicional para eventos de margem:
+
+* gerar eventos consolidados na sexta-feira e no último dia do mês
+* evitar duplicidade quando ambos caírem na mesma data
+* calcular com 2 casas decimais e ajustar resíduo no último lançamento do mês
+* quando margem <= 0, não gerar evento de margem e emitir sinalização para o planejamento
 
 ---
 

@@ -164,6 +164,19 @@ viewer
 
 ---
 
+# Evolução futura — Lançamentos Inter-Center
+
+Para cenários como "centro do negócio paga pessoa do centro pessoal":
+
+* o centro de origem cria lançamento com vínculo inter-center
+* o centro de destino recebe pendência para aceite
+* o destino pode ajustar classificação/detalhes permitidos antes do aceite
+* em rejeição, o centro de origem deve ser sinalizado com status e motivo
+* o centro de origem pode ajustar e reenviar ou cancelar
+* origem e destino permanecem ligados por identificador único para auditoria
+
+---
+
 # Convite de Usuários
 
 Fluxo:
@@ -222,6 +235,10 @@ Regras operacionais do onboarding:
 * após autenticação, completar dados de pessoa (PF/PJ)
 * centro de controle pessoal vinculado à pessoa no cadastro
 * formulário inicial do centro de controle deve permitir alterar nome
+* após signup, direcionar para boas-vindas para completar cadastro inicial
+* após login recorrente:
+  * se pessoa + centro de controle estiverem completos, direcionar para dashboard
+  * se estiver incompleto, direcionar para boas-vindas
 
 ---
 
@@ -466,6 +483,19 @@ parcelas futuras
 orçamento disponível
 ```
 
+Definições para cálculo:
+
+```text
+comprometido = realizado + previsão
+previsão = a pagar/receber + recorrência não confirmada
+```
+
+Regra:
+
+```text
+previsão não inclui a própria margem orçamentária
+```
+
 ---
 
 # Timeline Financeira
@@ -492,6 +522,7 @@ Detalhes obrigatórios da timeline:
 * incluir rateio semanal da dotação orçamentária
 * listar na sexta-feira e no último dia do mês
 * não duplicar evento quando sexta-feira coincidir com o último dia do mês
+* valores com 2 casas decimais e ajuste residual no último lançamento do mês
 
 ---
 
@@ -541,6 +572,13 @@ Comportamento:
 ```
 Margem = Orçamento − Comprometido
 ```
+
+Comportamento de projeção da margem:
+
+* rateio diário pelos dias restantes do mês, incluindo hoje
+* consolidação dos valores na timeline por semana (sexta-feira) e no fechamento do mês
+* se a margem for negativa, considerar margem igual a zero para rateio
+* margem negativa deve gerar alerta para usuários com acesso ao planejamento
 
 ---
 
