@@ -1,5 +1,18 @@
 # FINAPP — Product Requirements Document (PRD)
 
+# Fonte de Verdade e Governança
+
+Documento norte:
+
+```text
+docs/ESSENCIAL.md
+```
+
+Diretriz de alinhamento:
+
+* em caso de conflito entre este PRD e outros documentos, prevalece `ESSENCIAL.md`
+* ao identificar conflito, primeiro alinhar entendimento e depois atualizar documentação e implementação
+
 # 1. Visão Geral do Produto
 
 FINAPP é uma plataforma online de gestão financeira voltada para:
@@ -203,6 +216,13 @@ Visualização da projeção
 Configuração do planejamento
 ```
 
+Regras operacionais do onboarding:
+
+* cadastro inicial com fricção mínima
+* após autenticação, completar dados de pessoa (PF/PJ)
+* centro de controle pessoal vinculado à pessoa no cadastro
+* formulário inicial do centro de controle deve permitir alterar nome
+
 ---
 
 # 5. Criação de Conta
@@ -328,6 +348,12 @@ valor
 
 Os lançamentos são apresentados para revisão.
 
+Critério obrigatório de conciliação:
+
+```text
+total dos lançamentos deve ser igual ao valor total da fatura
+```
+
 ---
 
 # Revisão das Compras
@@ -364,6 +390,13 @@ Quando marcada como recorrente:
 
 ```
 cria modelo de recorrência
+```
+
+Regra de estado:
+
+```text
+recorrência não confirmada = previsão
+recorrência confirmada = compromisso
 ```
 
 ---
@@ -454,6 +487,12 @@ eventos realizados (D-7)
 eventos projetados
 ```
 
+Detalhes obrigatórios da timeline:
+
+* incluir rateio semanal da dotação orçamentária
+* listar na sexta-feira e no último dia do mês
+* não duplicar evento quando sexta-feira coincidir com o último dia do mês
+
 ---
 
 # 12. Planejamento Financeiro
@@ -483,6 +522,17 @@ Orçamento
 Realizado + Comprometido
 Margem
 ```
+
+Visualização inicial do comprometido:
+
+```text
+Realizado + Compromissos + Previsões
+```
+
+Comportamento:
+
+* exibir inicialmente agrupado como "comprometido"
+* permitir expansão para detalhamento
 
 ---
 
@@ -695,6 +745,41 @@ Ajustar planejamento
 ↓
 Analisar resultados
 ```
+
+---
+
+# Cadastro Contextual
+
+Em qualquer ponto do fluxo que exigir dados relacionais, a UI deve oferecer:
+
+```text
+selecionar
+filtrar
+adicionar
+```
+
+Comportamento esperado do campo relacional:
+
+1. botão para listar valores já cadastrados
+2. ao digitar, exibir ocorrências compatíveis imediatamente
+3. botão "+" para abrir formulário de cadastro do novo valor no contexto do próprio campo
+
+Escopo mínimo:
+
+```text
+categorias
+contas
+pessoas (sacados/favorecidos)
+```
+
+---
+
+# Padrão de Campos Monetários
+
+Campos monetários devem seguir padrão único na interface:
+
+1. alinhamento do conteúdo à direita
+2. máscara monetária com digitação contínua, sem exigir vírgula manual
 
 ---
 

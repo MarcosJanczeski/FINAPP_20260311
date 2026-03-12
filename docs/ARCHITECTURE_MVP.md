@@ -1,5 +1,18 @@
 # FINAPP — Arquitetura do MVP
 
+# Fonte de Verdade e Alinhamento
+
+Este documento deve permanecer alinhado com:
+
+```text
+docs/ESSENCIAL.md
+```
+
+Regra de precedência:
+
+* em caso de conflito entre arquitetura, PRD e demais artefatos, prevalece `ESSENCIAL.md`
+* conflitos devem ser resolvidos por alinhamento de entendimento e atualização dos documentos antes de consolidar implementação
+
 ## Objetivo deste documento
 
 Este documento define a arquitetura do MVP do **FINAPP**, garantindo que o código seja organizado de forma que:
@@ -100,6 +113,22 @@ Isso permite:
 * múltiplos centros por usuário
 * compartilhamento de centros
 * isolamento de dados
+
+---
+
+### 6 — Fluxo guiado como espinha do MVP
+
+A arquitetura deve suportar o fluxo principal nesta ordem:
+
+```text
+landing -> signup -> boas-vindas/pessoa -> centro de controle -> contas/importação ->
+cartões/importação+conciliação -> recorrências -> projeção -> planejamento
+```
+
+Consequência técnica:
+
+* cada etapa deve ser implementável como módulo independente sem acoplamento circular
+* transições entre etapas devem depender de casos de uso (e não de acesso direto à infraestrutura)
 
 ---
 
@@ -442,6 +471,62 @@ O gráfico mensal e a timeline diária devem refletir exatamente os mesmos dados
 
 ---
 
+### Conciliação de fatura é obrigatória
+
+Na importação de cartão:
+
+```text
+soma dos lançamentos importados = valor total da fatura
+```
+
+Essa validação deve existir em caso de uso/regra de domínio, nunca apenas na UI.
+
+---
+
+### Recorrência confirmada muda de natureza
+
+Estados obrigatórios:
+
+```text
+recorrência não confirmada = previsão
+recorrência confirmada = compromisso
+```
+
+A projeção deve considerar ambos, respeitando seu estado.
+
+---
+
+### Cadastro contextual obrigatório
+
+Ao informar dados relacionais (categorias, contas, pessoas), a interface deve permitir:
+
+```text
+selecionar
+filtrar
+adicionar
+```
+
+Implementação deve ocorrer por casos de uso e repositórios, sem bypass da camada de aplicação.
+
+Comportamento mínimo do componente de campo relacional:
+
+1. botão para listar valores existentes
+2. filtro em tempo de digitação com ocorrências compatíveis
+3. botão "+" para abrir fluxo de criação contextual do novo valor
+
+---
+
+### Padrão de campos monetários
+
+Componentes de entrada monetária devem padronizar:
+
+1. alinhamento do valor à direita
+2. máscara monetária com entrada contínua sem necessidade de vírgula manual
+
+Esse padrão deve ser centralizado em componente reutilizável de `presentation/forms`.
+
+---
+
 # Seed de Dados
 
 O sistema deve permitir seed local para testes.
@@ -503,6 +588,7 @@ A arquitetura será considerada correta quando:
 Após este documento, os próximos artefatos são:
 
 ```text
+ESSENCIAL.md
 FINAPP_PRD.md
 FINAPP_DATABASE_SCHEMA.md
 FINAPP_FINANCIAL_ENGINE.md

@@ -1,5 +1,7 @@
 import { createBrowserRouter } from 'react-router-dom';
 import { ROUTES } from '../shared/constants/routes';
+import { RequireAuth } from '../presentation/components/RequireAuth';
+import { RequireGuest } from '../presentation/components/RequireGuest';
 import { DashboardPage } from '../presentation/pages/DashboardPage';
 import { HomePage } from '../presentation/pages/HomePage';
 import { LoginPage } from '../presentation/pages/LoginPage';
@@ -13,18 +15,34 @@ export const appRouter = createBrowserRouter([
   },
   {
     path: ROUTES.login,
-    element: <LoginPage />,
+    element: (
+      <RequireGuest>
+        <LoginPage />
+      </RequireGuest>
+    ),
   },
   {
     path: ROUTES.signup,
-    element: <SignupPage />,
+    element: (
+      <RequireGuest>
+        <SignupPage />
+      </RequireGuest>
+    ),
   },
   {
     path: ROUTES.welcome,
-    element: <WelcomePage />,
+    element: (
+      <RequireAuth>
+        <WelcomePage />
+      </RequireAuth>
+    ),
   },
   {
     path: ROUTES.dashboard,
-    element: <DashboardPage />,
+    element: (
+      <RequireAuth>
+        <DashboardPage />
+      </RequireAuth>
+    ),
   },
 ]);
