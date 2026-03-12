@@ -3,6 +3,7 @@ import { ROUTES } from '../shared/constants/routes';
 import { RequireAuth } from '../presentation/components/RequireAuth';
 import { RequireGuest } from '../presentation/components/RequireGuest';
 import { DashboardPage } from '../presentation/pages/DashboardPage';
+import { AccountsPage } from '../presentation/pages/AccountsPage';
 import { HomePage } from '../presentation/pages/HomePage';
 import { LoginPage } from '../presentation/pages/LoginPage';
 import { SignupPage } from '../presentation/pages/SignupPage';
@@ -42,6 +43,14 @@ export const appRouter = createBrowserRouter([
     element: (
       <RequireAuth>
         <DashboardPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: ROUTES.accounts,
+    element: (
+      <RequireAuth>
+        <AccountsPage />
       </RequireAuth>
     ),
   },

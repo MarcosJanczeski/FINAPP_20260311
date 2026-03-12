@@ -306,7 +306,9 @@ Campos:
 ```
 nome da conta
 tipo
-saldo atual
+natureza (ativo/passivo)
+conta contábil vinculada
+saldo inicial
 ```
 
 Tipos:
@@ -317,6 +319,14 @@ conta corrente
 conta digital
 investimento
 ```
+
+Regra de integração contábil:
+
+* cada conta operacional deve referenciar uma conta do plano contábil
+* ao criar conta com saldo inicial, gerar lançamento de abertura em partidas dobradas
+* contrapartida padrão: `PL:SALDOS_INICIAIS`
+* ativo: débito na conta vinculada e crédito em `PL:SALDOS_INICIAIS`
+* passivo: débito em `PL:SALDOS_INICIAIS` e crédito na conta vinculada
 
 ---
 
@@ -735,6 +745,22 @@ Regra:
 ```
 Total de débitos = total de créditos
 ```
+
+Plano de contas básico por centro de controle:
+
+```text
+ATIVO
+PASSIVO
+PATRIMONIO_LIQUIDO
+RECEITAS
+DESPESAS
+```
+
+Regras:
+
+* contas raiz são de sistema e não editáveis
+* subcategorias podem ser criadas e editadas conforme evolução
+* conta técnica `PL:SALDOS_INICIAIS` é de sistema e não editável
 
 ---
 

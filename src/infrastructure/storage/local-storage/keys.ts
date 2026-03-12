@@ -4,4 +4,7 @@ export const STORAGE_KEYS = {
   people: 'people',
   controlCenters: 'control-centers',
   controlCenterMemberships: 'control-center-memberships',
+  accounts: 'accounts',
+  ledgerAccounts: 'ledger-accounts',
+  ledgerEntries: 'ledger-entries',
 } as const;

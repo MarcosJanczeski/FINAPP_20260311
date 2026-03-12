@@ -11,6 +11,7 @@ export function DashboardPage() {
       <p>Sessao ativa para: {session?.userId}</p>
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
         <Link to={ROUTES.welcome}>Voltar para welcome</Link>
+        <Link to={ROUTES.accounts}>Ir para contas</Link>
         <button type="button" onClick={() => void logout()}>
           Sair
         </button>

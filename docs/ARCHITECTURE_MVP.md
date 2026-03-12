@@ -317,6 +317,14 @@ LocalStorageControlCenterRepository
 SupabaseControlCenterRepository
 ```
 
+Contratos mínimos para base contábil do MVP:
+
+```text
+AccountRepository
+LedgerAccountRepository
+LedgerEntryRepository
+```
+
 ---
 
 # Persistência Atual — localStorage
@@ -534,6 +542,42 @@ recorrência confirmada = compromisso
 ```
 
 A projeção deve considerar ambos, respeitando seu estado.
+
+---
+
+### Abertura de conta deve gerar lançamento contábil
+
+Invariantes:
+
+* `Account` deve possuir vínculo com conta contábil (`ledgerAccountId`)
+* saldo inicial não pode existir apenas na camada operacional
+* ao criar conta com saldo inicial, gerar `LedgerEntry` de abertura em partidas dobradas
+* contrapartida padrão por centro de controle: `PL:SALDOS_INICIAIS`
+
+Regras por natureza:
+
+* ativo: débito na conta vinculada e crédito em `PL:SALDOS_INICIAIS`
+* passivo: débito em `PL:SALDOS_INICIAIS` e crédito na conta vinculada
+
+---
+
+### Plano de contas básico evolutivo
+
+Cada centro de controle deve ter, no mínimo, as raízes:
+
+```text
+ATIVO
+PASSIVO
+PATRIMONIO_LIQUIDO
+RECEITAS
+DESPESAS
+```
+
+Regras:
+
+* raízes são contas de sistema e não editáveis
+* subcategorias são editáveis e podem evoluir ao longo do desenvolvimento
+* contas técnicas de sistema (ex.: `PL:SALDOS_INICIAIS`) não são editáveis
 
 ---
 

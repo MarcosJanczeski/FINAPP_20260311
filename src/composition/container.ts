@@ -7,6 +7,8 @@ import { SignUpUseCase } from '../application/use-cases/SignUpUseCase';
 import { CompleteWelcomeProfileUseCase } from '../application/use-cases/CompleteWelcomeProfileUseCase';
 import { CreateOrUpdatePersonalControlCenterUseCase } from '../application/use-cases/CreateOrUpdatePersonalControlCenterUseCase';
 import { GetWelcomeSetupUseCase } from '../application/use-cases/GetWelcomeSetupUseCase';
+import { GetAccountsSetupUseCase } from '../application/use-cases/GetAccountsSetupUseCase';
+import { CreateAccountWithOpeningBalanceUseCase } from '../application/use-cases/CreateAccountWithOpeningBalanceUseCase';
 
 export interface AppContainer {
   repositories: ReturnType<typeof createLocalStorageRepositories>;
@@ -18,6 +20,8 @@ export interface AppContainer {
     getWelcomeSetup: GetWelcomeSetupUseCase;
     completeWelcomeProfile: CompleteWelcomeProfileUseCase;
     createOrUpdatePersonalControlCenter: CreateOrUpdatePersonalControlCenterUseCase;
+    getAccountsSetup: GetAccountsSetupUseCase;
+    createAccountWithOpeningBalance: CreateAccountWithOpeningBalanceUseCase;
   };
 }
 
@@ -37,6 +41,17 @@ export function createAppContainer(): AppContainer {
     createOrUpdatePersonalControlCenter: new CreateOrUpdatePersonalControlCenterUseCase(
       repositories.controlCenterRepository,
       repositories.controlCenterMembershipRepository,
+    ),
+    getAccountsSetup: new GetAccountsSetupUseCase(
+      repositories.controlCenterRepository,
+      repositories.accountRepository,
+      repositories.ledgerAccountRepository,
+      repositories.ledgerEntryRepository,
+    ),
+    createAccountWithOpeningBalance: new CreateAccountWithOpeningBalanceUseCase(
+      repositories.accountRepository,
+      repositories.ledgerAccountRepository,
+      repositories.ledgerEntryRepository,
     ),
   };
 
