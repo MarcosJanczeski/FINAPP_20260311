@@ -1,0 +1,510 @@
+# FINAPP — Arquitetura do MVP
+
+## Objetivo deste documento
+
+Este documento define a arquitetura do MVP do **FINAPP**, garantindo que o código seja organizado de forma que:
+
+* a lógica de negócio permaneça desacoplada da infraestrutura
+* a persistência atual em **localStorage** possa ser substituída por **Supabase** com mínimo retrabalho
+* a aplicação seja estruturada de forma escalável desde o início
+* a base de código seja compatível com evolução para SaaS multi-usuário
+
+Este documento também serve como **guia para agentes de código (Codex)** durante a implementação.
+
+---
+
+# Princípios Arquiteturais
+
+O FINAPP segue os seguintes princípios:
+
+### 1 — Separação de camadas
+
+O sistema deve separar claramente:
+
+```text
+Domínio
+Aplicação
+Infraestrutura
+Interface (UI)
+```
+
+Cada camada possui responsabilidades específicas.
+
+---
+
+### 2 — Domínio independente
+
+A camada de domínio:
+
+* não depende de framework
+* não depende de React
+* não depende de Supabase
+* não depende de localStorage
+
+Ela contém apenas:
+
+* entidades
+* regras de negócio
+* cálculos financeiros
+* tipos e contratos
+
+---
+
+### 3 — UI não conhece infraestrutura
+
+Componentes da interface **não podem acessar diretamente**:
+
+```text
+localStorage
+Supabase
+fetch
+API externa
+```
+
+Toda comunicação deve passar por **repositórios e casos de uso**.
+
+---
+
+### 4 — Persistência intercambiável
+
+A persistência deve ser implementada através de **repositórios com contratos bem definidos**.
+
+Hoje:
+
+```text
+LocalStorageRepository
+```
+
+No futuro:
+
+```text
+SupabaseRepository
+```
+
+A troca deve exigir alterações **apenas na camada de infraestrutura**.
+
+---
+
+### 5 — Multi-tenant desde o início
+
+O FINAPP é baseado em **centros de controle**.
+
+Todas as entidades financeiras devem possuir:
+
+```text
+controlCenterId
+```
+
+Isso permite:
+
+* múltiplos centros por usuário
+* compartilhamento de centros
+* isolamento de dados
+
+---
+
+# Estrutura de Pastas
+
+A aplicação deve seguir a seguinte estrutura.
+
+```text
+src/
+
+  domain/
+    entities/
+    value-objects/
+    rules/
+    services/
+    repositories/
+    types/
+
+  application/
+    use-cases/
+    dto/
+    mappers/
+
+  infrastructure/
+    storage/
+      local-storage/
+        driver.ts
+        keys.ts
+      supabase/
+        client.ts
+
+    repositories/
+      local-storage/
+      supabase/
+
+  presentation/
+    pages/
+    components/
+    hooks/
+    view-models/
+    forms/
+
+  shared/
+    utils/
+    constants/
+    errors/
+
+  composition/
+    container.ts
+```
+
+---
+
+# Camadas da Aplicação
+
+## Domínio
+
+Contém as regras centrais do sistema.
+
+Exemplos:
+
+* cálculo de projeção financeira
+* cálculo de margem orçamentária
+* diagnóstico financeiro
+* consolidação de cartão de crédito
+* geração de parcelas
+
+O domínio deve conter:
+
+```text
+entities
+value objects
+regras financeiras
+interfaces de repositório
+```
+
+Exemplo de entidades:
+
+```text
+User
+Person
+ControlCenter
+Account
+CreditCard
+Commitment
+RecurringTemplate
+PlanningPeriod
+Transaction
+```
+
+---
+
+## Aplicação
+
+A camada de aplicação contém **casos de uso**.
+
+Ela orquestra o domínio e os repositórios.
+
+Exemplos:
+
+```text
+CreateUser
+CreateControlCenter
+AddAccount
+ImportCreditCardBill
+RegisterTransaction
+CalculateProjection
+UpdatePlanning
+```
+
+Casos de uso devem depender apenas de:
+
+```text
+interfaces de repositório
+entidades do domínio
+```
+
+---
+
+## Infraestrutura
+
+Implementa detalhes técnicos.
+
+Inclui:
+
+* persistência
+* integrações
+* adaptadores
+
+Exemplos:
+
+```text
+LocalStorageAccountRepository
+LocalStorageCommitmentRepository
+SupabaseAccountRepository
+SupabaseCommitmentRepository
+```
+
+A infraestrutura implementa as interfaces definidas no domínio.
+
+---
+
+## Interface (Presentation)
+
+Responsável pela interface do usuário.
+
+Inclui:
+
+```text
+pages
+componentes
+hooks
+formularios
+view models
+```
+
+A UI não pode acessar persistência diretamente.
+
+Ela deve chamar **casos de uso da camada de aplicação**.
+
+---
+
+# Repositórios
+
+Repositórios definem contratos de acesso a dados.
+
+Exemplo:
+
+```ts
+export interface ControlCenterRepository {
+  listByUser(userId: string): Promise<ControlCenter[]>
+  getById(id: string): Promise<ControlCenter | null>
+  save(center: ControlCenter): Promise<void>
+  delete(id: string): Promise<void>
+}
+```
+
+Implementações:
+
+```text
+LocalStorageControlCenterRepository
+SupabaseControlCenterRepository
+```
+
+---
+
+# Persistência Atual — localStorage
+
+Durante o MVP, os dados serão persistidos em **localStorage**.
+
+Isso permite:
+
+* desenvolvimento rápido
+* testes de fluxo
+* validação da experiência do usuário
+
+Mas **localStorage não pode ser acessado diretamente pela UI**.
+
+Deve existir um driver centralizado:
+
+```text
+infrastructure/storage/local-storage
+```
+
+---
+
+# Adapter de Storage
+
+Exemplo de responsabilidades:
+
+```text
+serialização JSON
+namespaces de chave
+versionamento de dados
+```
+
+Exemplo de chave:
+
+```text
+finapp.users
+finapp.controlCenters
+finapp.accounts
+finapp.cards
+finapp.commitments
+finapp.recurring
+finapp.planning
+```
+
+---
+
+# Composition Root
+
+A aplicação deve possuir um ponto central para composição de dependências.
+
+Arquivo sugerido:
+
+```text
+src/composition/container.ts
+```
+
+Responsabilidades:
+
+* instanciar repositórios
+* conectar casos de uso
+* fornecer dependências para a UI
+
+Exemplo:
+
+```ts
+const repositories = {
+  controlCenterRepository: new LocalStorageControlCenterRepository(),
+  accountRepository: new LocalStorageAccountRepository()
+}
+```
+
+Quando migrar para Supabase:
+
+```ts
+const repositories = {
+  controlCenterRepository: new SupabaseControlCenterRepository(),
+  accountRepository: new SupabaseAccountRepository()
+}
+```
+
+---
+
+# Modelo Multi-Usuário
+
+O FINAPP permite compartilhamento de centros.
+
+Tabela conceitual:
+
+```text
+control_center_users
+```
+
+Campos:
+
+```text
+userId
+controlCenterId
+role
+```
+
+Papéis possíveis:
+
+```text
+owner
+manager
+contributor
+viewer
+```
+
+---
+
+# Regras Financeiras Fundamentais
+
+Estas regras devem ser respeitadas desde o MVP.
+
+### Compra no cartão não reduz saldo disponível
+
+O saldo da conta só muda quando ocorre:
+
+```text
+pagamento da fatura
+pagamento de conta
+saída real da conta
+```
+
+---
+
+### Compras do cartão impactam
+
+```text
+categorias
+planejamento
+projeção
+```
+
+---
+
+### Projeção usa múltiplas fontes
+
+A projeção financeira deve considerar:
+
+```text
+saldo atual
+contas a pagar
+contas a receber
+recorrências
+parcelas futuras
+margem do orçamento
+```
+
+---
+
+### Gráfico e timeline devem usar a mesma base
+
+O gráfico mensal e a timeline diária devem refletir exatamente os mesmos dados.
+
+---
+
+# Seed de Dados
+
+O sistema deve permitir seed local para testes.
+
+Exemplo:
+
+```text
+contas
+cartões
+recorrências
+categorias
+compromissos
+```
+
+Isso facilita testes de:
+
+```text
+projeção
+planejamento
+diagnóstico
+```
+
+---
+
+# Migração futura para Supabase
+
+Quando migrar para Supabase:
+
+* substituir implementações de repositório
+* manter domínio e aplicação intactos
+* manter UI intacta
+
+Infraestrutura nova incluirá:
+
+```text
+Supabase Auth
+PostgreSQL
+Row Level Security
+Storage
+```
+
+---
+
+# Critérios de Aceite da Arquitetura
+
+A arquitetura será considerada correta quando:
+
+* UI não acessa localStorage
+* domínio não depende de framework
+* persistência é feita via repositórios
+* troca para Supabase exige mudança apenas na infraestrutura
+* entidades possuem controlCenterId
+* casos de uso orquestram a lógica
+
+---
+
+# Próximos Documentos do Projeto
+
+Após este documento, os próximos artefatos são:
+
+```text
+FINAPP_PRD.md
+FINAPP_DATABASE_SCHEMA.md
+FINAPP_FINANCIAL_ENGINE.md
+FINAPP_PROJECTION_ENGINE.md
+```
