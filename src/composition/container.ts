@@ -9,6 +9,8 @@ import { CreateOrUpdatePersonalControlCenterUseCase } from '../application/use-c
 import { GetWelcomeSetupUseCase } from '../application/use-cases/GetWelcomeSetupUseCase';
 import { GetAccountsSetupUseCase } from '../application/use-cases/GetAccountsSetupUseCase';
 import { CreateAccountWithOpeningBalanceUseCase } from '../application/use-cases/CreateAccountWithOpeningBalanceUseCase';
+import { UpdateAccountProfileUseCase } from '../application/use-cases/UpdateAccountProfileUseCase';
+import { AdjustAccountOpeningUseCase } from '../application/use-cases/AdjustAccountOpeningUseCase';
 
 export interface AppContainer {
   repositories: ReturnType<typeof createLocalStorageRepositories>;
@@ -22,6 +24,8 @@ export interface AppContainer {
     createOrUpdatePersonalControlCenter: CreateOrUpdatePersonalControlCenterUseCase;
     getAccountsSetup: GetAccountsSetupUseCase;
     createAccountWithOpeningBalance: CreateAccountWithOpeningBalanceUseCase;
+    updateAccountProfile: UpdateAccountProfileUseCase;
+    adjustAccountOpening: AdjustAccountOpeningUseCase;
   };
 }
 
@@ -49,6 +53,12 @@ export function createAppContainer(): AppContainer {
       repositories.ledgerEntryRepository,
     ),
     createAccountWithOpeningBalance: new CreateAccountWithOpeningBalanceUseCase(
+      repositories.accountRepository,
+      repositories.ledgerAccountRepository,
+      repositories.ledgerEntryRepository,
+    ),
+    updateAccountProfile: new UpdateAccountProfileUseCase(repositories.accountRepository),
+    adjustAccountOpening: new AdjustAccountOpeningUseCase(
       repositories.accountRepository,
       repositories.ledgerAccountRepository,
       repositories.ledgerEntryRepository,

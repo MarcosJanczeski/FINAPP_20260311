@@ -1,6 +1,6 @@
 import type { ID, ISODateString } from '../types/common';
 
-export type LedgerAccountKind = 'asset' | 'liability' | 'equity';
+export type LedgerAccountKind = 'asset' | 'liability' | 'equity' | 'revenue' | 'expense';
 
 export interface LedgerAccount {
   id: ID;

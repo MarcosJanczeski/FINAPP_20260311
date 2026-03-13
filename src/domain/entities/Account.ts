@@ -12,4 +12,5 @@ export interface Account {
   ledgerAccountId: ID;
   openingBalanceCents: number;
   createdAt: ISODateString;
+  updatedAt: ISODateString;
 }

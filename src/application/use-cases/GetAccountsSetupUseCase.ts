@@ -8,6 +8,16 @@ import type { AccountsSetupDTO } from '../dto/AccountSetupDTO';
 
 const DEFAULT_LEDGER_ACCOUNTS: ReadonlyArray<Omit<LedgerAccount, 'id' | 'createdAt' | 'controlCenterId'>> =
   [
+    { code: 'ATIVO', name: 'ATIVO', kind: 'asset', isSystem: true },
+    { code: 'PASSIVO', name: 'PASSIVO', kind: 'liability', isSystem: true },
+    {
+      code: 'PATRIMONIO_LIQUIDO',
+      name: 'PATRIMONIO LIQUIDO',
+      kind: 'equity',
+      isSystem: true,
+    },
+    { code: 'RECEITAS', name: 'RECEITAS', kind: 'revenue', isSystem: true },
+    { code: 'DESPESAS', name: 'DESPESAS', kind: 'expense', isSystem: true },
     {
       code: 'ATIVO:DISPONIBILIDADES',
       name: 'Ativo - Disponibilidades',
@@ -16,7 +26,7 @@ const DEFAULT_LEDGER_ACCOUNTS: ReadonlyArray<Omit<LedgerAccount, 'id' | 'created
     },
     {
       code: 'PASSIVO:OBRIGACOES',
-      name: 'Passivo - Obrigações',
+      name: 'Passivo - Obrigacoes',
       kind: 'liability',
       isSystem: true,
     },
@@ -24,6 +34,18 @@ const DEFAULT_LEDGER_ACCOUNTS: ReadonlyArray<Omit<LedgerAccount, 'id' | 'created
       code: 'PL:SALDOS_INICIAIS',
       name: 'PL - Saldos Iniciais',
       kind: 'equity',
+      isSystem: true,
+    },
+    {
+      code: 'RECEITA:OPERACIONAL',
+      name: 'Receita - Operacional',
+      kind: 'revenue',
+      isSystem: true,
+    },
+    {
+      code: 'DESPESA:OPERACIONAL',
+      name: 'Despesa - Operacional',
+      kind: 'expense',
       isSystem: true,
     },
   ];
@@ -56,7 +78,7 @@ export class GetAccountsSetupUseCase {
       controlCenterId: controlCenter.id,
       accounts,
       ledgerAccounts,
-      openingEntries: ledgerEntries.filter((entry) => entry.referenceType === 'account_opening'),
+      ledgerEntries,
     };
   }
 

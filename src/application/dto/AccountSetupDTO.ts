@@ -5,6 +5,7 @@ import type { ID } from '../../domain/types/common';
 
 export interface CreateAccountInputDTO {
   controlCenterId: ID;
+  createdByUserId: ID;
   name: string;
   type: Account['type'];
   nature: Account['nature'];
@@ -12,9 +13,26 @@ export interface CreateAccountInputDTO {
   openingBalanceCents: number;
 }
 
+export interface UpdateAccountProfileInputDTO {
+  controlCenterId: ID;
+  accountId: ID;
+  name: string;
+  type: Account['type'];
+}
+
+export interface AdjustAccountOpeningInputDTO {
+  controlCenterId: ID;
+  accountId: ID;
+  updatedByUserId: ID;
+  nature: Account['nature'];
+  ledgerAccountId: ID;
+  openingBalanceCents: number;
+  reason: string;
+}
+
 export interface AccountsSetupDTO {
   controlCenterId: ID;
   accounts: Account[];
   ledgerAccounts: LedgerAccount[];
-  openingEntries: LedgerEntry[];
+  ledgerEntries: LedgerEntry[];
 }

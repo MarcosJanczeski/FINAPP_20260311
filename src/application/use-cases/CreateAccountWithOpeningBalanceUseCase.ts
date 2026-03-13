@@ -39,6 +39,7 @@ export class CreateAccountWithOpeningBalanceUseCase {
     }
 
     const openingEquity = await this.ensureOpeningEquityAccount(input.controlCenterId);
+    const now = new Date().toISOString();
 
     const account: Account = {
       id: crypto.randomUUID(),
@@ -48,18 +49,24 @@ export class CreateAccountWithOpeningBalanceUseCase {
       nature: input.nature,
       ledgerAccountId: input.ledgerAccountId,
       openingBalanceCents,
-      createdAt: new Date().toISOString(),
+      createdAt: now,
+      updatedAt: now,
     };
 
     await this.accountRepository.save(account);
 
     if (openingBalanceCents > 0) {
-      const entry = this.buildOpeningEntry(
-        account,
-        input.ledgerAccountId,
-        openingEquity.id,
-        openingBalanceCents,
-      );
+      const entry = this.buildOpeningLikeEntry({
+        controlCenterId: account.controlCenterId,
+        referenceId: account.id,
+        referenceType: 'account_opening',
+        description: `Saldo inicial - ${account.name}`,
+        isAsset: account.nature === 'asset',
+        targetLedgerAccountId: input.ledgerAccountId,
+        openingEquityAccountId: openingEquity.id,
+        amountCents: openingBalanceCents,
+        userId: input.createdByUserId,
+      });
       await this.ledgerEntryRepository.save(entry);
     }
 
@@ -86,34 +93,42 @@ export class CreateAccountWithOpeningBalanceUseCase {
     return created;
   }
 
-  private buildOpeningEntry(
-    account: Account,
-    targetLedgerAccountId: string,
-    openingEquityAccountId: string,
-    amountCents: number,
-  ): LedgerEntry {
-    const isAsset = account.nature === 'asset';
+  private buildOpeningLikeEntry(input: {
+    controlCenterId: string;
+    referenceId: string;
+    referenceType: 'account_opening' | 'account_opening_adjustment';
+    description: string;
+    isAsset: boolean;
+    targetLedgerAccountId: string;
+    openingEquityAccountId: string;
+    amountCents: number;
+    userId: string;
+    reason?: string;
+  }): LedgerEntry {
+    const now = new Date().toISOString();
 
     return {
       id: crypto.randomUUID(),
-      controlCenterId: account.controlCenterId,
-      date: new Date().toISOString(),
-      description: `Saldo inicial - ${account.name}`,
-      referenceType: 'account_opening',
-      referenceId: account.id,
+      controlCenterId: input.controlCenterId,
+      date: now,
+      description: input.description,
+      referenceType: input.referenceType,
+      referenceId: input.referenceId,
       lines: [
         {
-          ledgerAccountId: isAsset ? targetLedgerAccountId : openingEquityAccountId,
-          debitCents: amountCents,
+          ledgerAccountId: input.isAsset ? input.targetLedgerAccountId : input.openingEquityAccountId,
+          debitCents: input.amountCents,
           creditCents: 0,
         },
         {
-          ledgerAccountId: isAsset ? openingEquityAccountId : targetLedgerAccountId,
+          ledgerAccountId: input.isAsset ? input.openingEquityAccountId : input.targetLedgerAccountId,
           debitCents: 0,
-          creditCents: amountCents,
+          creditCents: input.amountCents,
         },
       ],
-      createdAt: new Date().toISOString(),
+      createdByUserId: input.userId,
+      reason: input.reason,
+      createdAt: now,
     };
   }
 }

@@ -559,6 +559,17 @@ Regras por natureza:
 * ativo: débito na conta vinculada e crédito em `PL:SALDOS_INICIAIS`
 * passivo: débito em `PL:SALDOS_INICIAIS` e crédito na conta vinculada
 
+Regra de edição segura:
+
+* campos cadastrais da conta podem ser alterados sem evento contábil
+* campos contábeis da conta não podem sobrescrever histórico
+* ajuste contábil deve gerar novos `LedgerEntry`:
+  * `account_opening_reversal`
+  * `account_opening_adjustment`
+* ajuste contábil deve ocorrer automaticamente ao salvar novo saldo inicial
+* motivo é opcional na UX e deve ser persistido quando informado
+* auditoria mínima por lançamento: `referenceId`, `createdByUserId`, `reason`
+
 ---
 
 ### Plano de contas básico evolutivo

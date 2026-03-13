@@ -328,6 +328,14 @@ Regra de integração contábil:
 * ativo: débito na conta vinculada e crédito em `PL:SALDOS_INICIAIS`
 * passivo: débito em `PL:SALDOS_INICIAIS` e crédito na conta vinculada
 
+Regra de edição:
+
+* edição cadastral (`nome`, `tipo`) não gera lançamento contábil
+* para ajuste de saldo inicial, a UI deve permitir entrada direta do novo valor
+* ajuste contábil preserva histórico: gera lançamento de reversão e novo lançamento de ajuste
+* ajuste contábil é automático na gravação; motivo é opcional e recomendável
+* lançamentos devem manter rastreio pela referência da conta editada
+
 ---
 
 # Importação de Extrato

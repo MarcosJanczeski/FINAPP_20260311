@@ -21,10 +21,13 @@ const ACCOUNT_TYPE_OPTIONS: { value: AccountType; label: string }[] = [
 export function AccountsPage() {
   const { session } = useAuth();
   const container = useAppContainer();
+
   const [controlCenterId, setControlCenterId] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [ledgerAccounts, setLedgerAccounts] = useState<LedgerAccount[]>([]);
-  const [openingEntries, setOpeningEntries] = useState<LedgerEntry[]>([]);
+  const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,9 +38,20 @@ export function AccountsPage() {
   const [ledgerAccountId, setLedgerAccountId] = useState('');
   const [openingBalanceCents, setOpeningBalanceCents] = useState(0);
 
+  const [editName, setEditName] = useState('');
+  const [editType, setEditType] = useState<AccountType>('cash');
+
+  const [adjustOpeningBalanceCents, setAdjustOpeningBalanceCents] = useState(0);
+  const [adjustReason, setAdjustReason] = useState('');
+
   const availableLedgerAccounts = useMemo(
     () => ledgerAccounts.filter((account) => account.kind === nature),
     [ledgerAccounts, nature],
+  );
+
+  const selectedAccount = useMemo(
+    () => accounts.find((account) => account.id === selectedAccountId) ?? null,
+    [accounts, selectedAccountId],
   );
 
   useEffect(() => {
@@ -51,6 +65,18 @@ export function AccountsPage() {
       setLedgerAccountId(availableLedgerAccounts[0].id);
     }
   }, [availableLedgerAccounts, ledgerAccountId]);
+
+  useEffect(() => {
+    if (!selectedAccount) {
+      return;
+    }
+
+    setEditName(selectedAccount.name);
+    setEditType(selectedAccount.type);
+
+    setAdjustOpeningBalanceCents(selectedAccount.openingBalanceCents);
+    setAdjustReason('');
+  }, [selectedAccount]);
 
   useEffect(() => {
     if (!session) {
@@ -69,7 +95,11 @@ export function AccountsPage() {
         setControlCenterId(setup.controlCenterId);
         setAccounts(setup.accounts);
         setLedgerAccounts(setup.ledgerAccounts);
-        setOpeningEntries(setup.openingEntries);
+        setLedgerEntries(setup.ledgerEntries);
+
+        if (!selectedAccountId && setup.accounts.length > 0) {
+          setSelectedAccountId(setup.accounts[0].id);
+        }
       } catch (currentError) {
         if (mounted) {
           setError(currentError instanceof Error ? currentError.message : 'Falha ao carregar contas.');
@@ -84,7 +114,7 @@ export function AccountsPage() {
     return () => {
       mounted = false;
     };
-  }, [container, session]);
+  }, [container, session, selectedAccountId]);
 
   const refreshData = async () => {
     if (!session) {
@@ -95,13 +125,23 @@ export function AccountsPage() {
     setControlCenterId(setup.controlCenterId);
     setAccounts(setup.accounts);
     setLedgerAccounts(setup.ledgerAccounts);
-    setOpeningEntries(setup.openingEntries);
+    setLedgerEntries(setup.ledgerEntries);
+
+    if (setup.accounts.length === 0) {
+      setSelectedAccountId('');
+      return;
+    }
+
+    const stillExists = setup.accounts.some((account) => account.id === selectedAccountId);
+    if (!stillExists) {
+      setSelectedAccountId(setup.accounts[0].id);
+    }
   };
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleCreateAccount = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!controlCenterId) {
-      setError('Centro de controle nao identificado.');
+    if (!controlCenterId || !session) {
+      setError('Centro de controle ou sessao nao identificado.');
       return;
     }
 
@@ -111,6 +151,7 @@ export function AccountsPage() {
     try {
       await container.useCases.createAccountWithOpeningBalance.execute({
         controlCenterId,
+        createdByUserId: session.userId,
         name,
         type,
         nature,
@@ -130,13 +171,71 @@ export function AccountsPage() {
     }
   };
 
+  const handleUpdateProfile = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!controlCenterId || !selectedAccount) {
+      setError('Selecione uma conta para editar.');
+      return;
+    }
+
+    setError(null);
+    setIsSaving(true);
+
+    try {
+      await container.useCases.updateAccountProfile.execute({
+        controlCenterId,
+        accountId: selectedAccount.id,
+        name: editName,
+        type: editType,
+      });
+
+      await refreshData();
+    } catch (currentError) {
+      setError(currentError instanceof Error ? currentError.message : 'Falha ao atualizar conta.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAdjustAccounting = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!controlCenterId || !selectedAccount || !session) {
+      setError('Selecione uma conta valida para ajustar.');
+      return;
+    }
+
+    setError(null);
+    setIsSaving(true);
+
+    try {
+      await container.useCases.adjustAccountOpening.execute({
+        controlCenterId,
+        accountId: selectedAccount.id,
+        updatedByUserId: session.userId,
+        nature: selectedAccount.nature,
+        ledgerAccountId: selectedAccount.ledgerAccountId,
+        openingBalanceCents: adjustOpeningBalanceCents,
+        reason: adjustReason.trim() || 'Ajuste manual de saldo inicial',
+      });
+
+      await refreshData();
+      setAdjustReason('');
+    } catch (currentError) {
+      setError(currentError instanceof Error ? currentError.message : 'Falha ao ajustar conta.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (isLoading) {
     return <RoutePlaceholder title="Contas" description="Carregando contas..." />;
   }
 
   return (
-    <RoutePlaceholder title="Contas" description="Cadastro minimo de disponibilidades com abertura contabil.">
-      <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '0.5rem', maxWidth: 380 }}>
+    <RoutePlaceholder title="Contas" description="Cadastro e edicao com seguranca contabil.">
+      <form onSubmit={handleCreateAccount} style={{ display: 'grid', gap: '0.5rem', maxWidth: 380 }}>
+        <h2>Nova conta</h2>
+
         <label htmlFor="account-name">Nome da conta</label>
         <input
           id="account-name"
@@ -205,6 +304,9 @@ export function AccountsPage() {
           <ul>
             {accounts.map((account) => (
               <li key={account.id}>
+                <button type="button" onClick={() => setSelectedAccountId(account.id)}>
+                  Editar
+                </button>{' '}
                 {account.name} ({account.nature}) - {formatCurrencyFromCents(account.openingBalanceCents)}
               </li>
             ))}
@@ -212,20 +314,92 @@ export function AccountsPage() {
         )}
       </section>
 
+      {selectedAccount ? (
+        <section style={{ marginTop: '1rem' }}>
+          <h2>Editar conta selecionada</h2>
+          <p>Conta atual: {selectedAccount.name}</p>
+
+          <form onSubmit={handleUpdateProfile} style={{ display: 'grid', gap: '0.5rem', maxWidth: 380 }}>
+            <h3>Dados cadastrais</h3>
+            <label htmlFor="edit-name">Nome</label>
+            <input
+              id="edit-name"
+              type="text"
+              value={editName}
+              onChange={(event) => setEditName(event.target.value)}
+              required
+            />
+
+            <label htmlFor="edit-type">Tipo</label>
+            <select
+              id="edit-type"
+              value={editType}
+              onChange={(event) => setEditType(event.target.value as AccountType)}
+            >
+              {ACCOUNT_TYPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+
+            <button type="submit" disabled={isSaving}>
+              Salvar dados cadastrais
+            </button>
+          </form>
+
+          <form
+            onSubmit={handleAdjustAccounting}
+            style={{ display: 'grid', gap: '0.5rem', maxWidth: 380, marginTop: '1rem' }}
+          >
+            <h3>Ajuste de saldo inicial</h3>
+            <p>
+              Informe apenas o novo saldo inicial. O sistema registra automaticamente o ajuste
+              contabil e preserva todo o historico.
+            </p>
+
+            <label htmlFor="adjust-opening-balance">Saldo inicial</label>
+            <CurrencyInput
+              id="adjust-opening-balance"
+              valueCents={adjustOpeningBalanceCents}
+              onChangeCents={setAdjustOpeningBalanceCents}
+            />
+
+            <label htmlFor="adjust-reason">Motivo do ajuste</label>
+            <input
+              id="adjust-reason"
+              type="text"
+              value={adjustReason}
+              onChange={(event) => setAdjustReason(event.target.value)}
+              placeholder="Opcional"
+            />
+
+            <button type="submit" disabled={isSaving}>
+              Salvar ajuste contabil automatico
+            </button>
+          </form>
+        </section>
+      ) : null}
+
       <section style={{ marginTop: '1rem' }}>
-        <h2>Lancamentos de abertura</h2>
-        {openingEntries.length === 0 ? (
-          <p>Nenhum lancamento de abertura.</p>
+        <h2>Lancamentos contabeis de abertura/ajuste</h2>
+        {ledgerEntries.length === 0 ? (
+          <p>Nenhum lancamento contabil.</p>
         ) : (
           <ul>
-            {openingEntries.map((entry) => {
-              const amount = entry.lines.reduce((max, line) => Math.max(max, line.debitCents, line.creditCents), 0);
-              return (
-                <li key={entry.id}>
-                  {entry.description} - {formatCurrencyFromCents(amount)}
-                </li>
-              );
-            })}
+            {ledgerEntries
+              .filter((entry) => entry.referenceType.startsWith('account_opening'))
+              .map((entry) => {
+                const amount = entry.lines.reduce(
+                  (max, line) => Math.max(max, line.debitCents, line.creditCents),
+                  0,
+                );
+                return (
+                  <li key={entry.id}>
+                    {entry.referenceType} - {entry.description} - {formatCurrencyFromCents(amount)}
+                  </li>
+                );
+              })}
           </ul>
         )}
       </section>
