@@ -28,6 +28,11 @@ export class LocalStorageAccountRepository implements AccountRepository {
     this.storage.setItem<Account[]>(STORAGE_KEYS.accounts, accounts);
   }
 
+  async delete(id: ID): Promise<void> {
+    const accounts = this.readAll().filter((account) => account.id !== id);
+    this.storage.setItem<Account[]>(STORAGE_KEYS.accounts, accounts);
+  }
+
   private readAll(): Account[] {
     return this.storage.getItem<Account[]>(STORAGE_KEYS.accounts) ?? [];
   }

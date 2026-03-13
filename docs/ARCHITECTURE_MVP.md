@@ -569,6 +569,8 @@ Regra de edição segura:
 * ajuste contábil deve ocorrer automaticamente ao salvar novo saldo inicial
 * motivo é opcional na UX e deve ser persistido quando informado
 * auditoria mínima por lançamento: `referenceId`, `createdByUserId`, `reason`
+* exclusão física de conta só pode ocorrer sem `LedgerEntry` vinculado (`referenceId`)
+* com lançamento vinculado, o domínio deve bloquear exclusão e orientar ajuste/encerramento
 
 ---
 

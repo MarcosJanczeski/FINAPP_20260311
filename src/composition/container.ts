@@ -11,6 +11,7 @@ import { GetAccountsSetupUseCase } from '../application/use-cases/GetAccountsSet
 import { CreateAccountWithOpeningBalanceUseCase } from '../application/use-cases/CreateAccountWithOpeningBalanceUseCase';
 import { UpdateAccountProfileUseCase } from '../application/use-cases/UpdateAccountProfileUseCase';
 import { AdjustAccountOpeningUseCase } from '../application/use-cases/AdjustAccountOpeningUseCase';
+import { DeleteAccountUseCase } from '../application/use-cases/DeleteAccountUseCase';
 
 export interface AppContainer {
   repositories: ReturnType<typeof createLocalStorageRepositories>;
@@ -26,6 +27,7 @@ export interface AppContainer {
     createAccountWithOpeningBalance: CreateAccountWithOpeningBalanceUseCase;
     updateAccountProfile: UpdateAccountProfileUseCase;
     adjustAccountOpening: AdjustAccountOpeningUseCase;
+    deleteAccount: DeleteAccountUseCase;
   };
 }
 
@@ -61,6 +63,10 @@ export function createAppContainer(): AppContainer {
     adjustAccountOpening: new AdjustAccountOpeningUseCase(
       repositories.accountRepository,
       repositories.ledgerAccountRepository,
+      repositories.ledgerEntryRepository,
+    ),
+    deleteAccount: new DeleteAccountUseCase(
+      repositories.accountRepository,
       repositories.ledgerEntryRepository,
     ),
   };

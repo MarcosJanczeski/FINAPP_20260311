@@ -30,6 +30,11 @@ export interface AdjustAccountOpeningInputDTO {
   reason: string;
 }
 
+export interface DeleteAccountInputDTO {
+  controlCenterId: ID;
+  accountId: ID;
+}
+
 export interface AccountsSetupDTO {
   controlCenterId: ID;
   accounts: Account[];

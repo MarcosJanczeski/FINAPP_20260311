@@ -335,6 +335,8 @@ Regra de edição:
 * ajuste contábil preserva histórico: gera lançamento de reversão e novo lançamento de ajuste
 * ajuste contábil é automático na gravação; motivo é opcional e recomendável
 * lançamentos devem manter rastreio pela referência da conta editada
+* exclusão física só é permitida quando a conta não possui lançamentos contábeis vinculados
+* conta com lançamentos vinculados deve seguir fluxo de ajuste ou encerramento
 
 ---
 
