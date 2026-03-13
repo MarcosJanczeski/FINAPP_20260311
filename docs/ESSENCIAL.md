@@ -9,6 +9,9 @@ Olha só, vou te passar o que tenho em mente:
 - na sequência o usuário é encaminhado a informar suas contas de disponibilidades (caixa e bancos) e respectivos saldos atuais podendo também fazer a importação de algum arquivo pdf, csv ou ofx (neste caso os lançamentos são feitos usando como contrapartida uma conta transitória "reclassificar - dados importados").
 - no cadastro de contas, cada conta operacional deve estar vinculada a uma conta do plano contábil.
 - o registro de saldo inicial da conta já gera lançamento em partidas dobradas usando como contrapartida a conta de patrimônio líquido "Saldos Iniciais".
+- haverá uma tela própria de lançamentos contábeis para consulta técnica do razão, com filtros por tipo, descrição e referência.
+- na tela de razão, cada lançamento deve exibir as partidas contábeis detalhadas por linha (conta contábil, débito e crédito), mantendo leitura clara em telas de celular.
+- a criação de lançamento avançado nessa tela fica como evolução futura, acionada por botão (não por formulário fixo), com posição final definida por UX mobile-first.
 - plano de contas básico por centro de controle:
 1- raízes não editáveis: ATIVO, PASSIVO, PATRIMÔNIO LÍQUIDO, RECEITAS, DESPESAS
 2- subcategorias editáveis conforme necessidade

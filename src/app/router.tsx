@@ -4,6 +4,7 @@ import { RequireAuth } from '../presentation/components/RequireAuth';
 import { RequireGuest } from '../presentation/components/RequireGuest';
 import { DashboardPage } from '../presentation/pages/DashboardPage';
 import { AccountsPage } from '../presentation/pages/AccountsPage';
+import { LedgerPage } from '../presentation/pages/LedgerPage';
 import { HomePage } from '../presentation/pages/HomePage';
 import { LoginPage } from '../presentation/pages/LoginPage';
 import { SignupPage } from '../presentation/pages/SignupPage';
@@ -51,6 +52,14 @@ export const appRouter = createBrowserRouter([
     element: (
       <RequireAuth>
         <AccountsPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: ROUTES.ledger,
+    element: (
+      <RequireAuth>
+        <LedgerPage />
       </RequireAuth>
     ),
   },

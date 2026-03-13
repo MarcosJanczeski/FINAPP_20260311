@@ -5,4 +5,5 @@ export const ROUTES = {
   welcome: '/welcome',
   dashboard: '/dashboard',
   accounts: '/accounts',
+  ledger: '/ledger',
 } as const;

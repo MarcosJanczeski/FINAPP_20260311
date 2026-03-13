@@ -344,6 +344,7 @@ export function AccountsPage() {
           Nova conta
         </button>
         <Link to={ROUTES.dashboard}>Voltar para dashboard</Link>
+        <Link to={ROUTES.ledger}>Ir para lançamentos</Link>
       </div>
 
       {success ? <p>{success}</p> : null}
