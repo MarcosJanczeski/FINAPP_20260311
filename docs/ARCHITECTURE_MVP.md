@@ -571,6 +571,9 @@ Regra de edição segura:
 * auditoria mínima por lançamento: `referenceId`, `createdByUserId`, `reason`
 * exclusão física de conta só pode ocorrer sem `LedgerEntry` vinculado (`referenceId`)
 * com lançamento vinculado, o domínio deve bloquear exclusão e orientar ajuste/encerramento
+* `Account` deve suportar estado (`active`/`closed`) e data de encerramento (`closedAt`)
+* conta encerrada não aceita novos ajustes operacionais
+* encerramento não remove histórico operacional/contábil da conta
 
 ---
 

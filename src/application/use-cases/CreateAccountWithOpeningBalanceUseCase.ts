@@ -49,6 +49,8 @@ export class CreateAccountWithOpeningBalanceUseCase {
       nature: input.nature,
       ledgerAccountId: input.ledgerAccountId,
       openingBalanceCents,
+      status: 'active',
+      closedAt: null,
       createdAt: now,
       updatedAt: now,
     };

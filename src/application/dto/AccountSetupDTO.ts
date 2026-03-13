@@ -35,6 +35,11 @@ export interface DeleteAccountInputDTO {
   accountId: ID;
 }
 
+export interface CloseAccountInputDTO {
+  controlCenterId: ID;
+  accountId: ID;
+}
+
 export interface AccountsSetupDTO {
   controlCenterId: ID;
   accounts: Account[];

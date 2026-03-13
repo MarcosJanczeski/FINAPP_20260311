@@ -155,6 +155,10 @@ export function AccountsPage() {
 
   const startAdjust = (account: Account) => {
     clearMessages();
+    if (account.status === 'closed') {
+      setError('Conta encerrada nao permite ajuste de saldo inicial.');
+      return;
+    }
     setSelectedAccountId(account.id);
     setAdjustOpeningBalanceCents(account.openingBalanceCents);
     setAdjustReason('');
@@ -290,6 +294,45 @@ export function AccountsPage() {
     }
   };
 
+  const handleCloseAccount = async (account: Account) => {
+    if (!controlCenterId) {
+      setError('Centro de controle nao identificado.');
+      return;
+    }
+
+    if (account.status === 'closed') {
+      setError('Conta ja esta encerrada.');
+      return;
+    }
+
+    const confirmed = window.confirm(`Deseja encerrar a conta \"${account.name}\"?`);
+    if (!confirmed) {
+      return;
+    }
+
+    clearMessages();
+    setIsSaving(true);
+
+    try {
+      await container.useCases.closeAccount.execute({
+        controlCenterId,
+        accountId: account.id,
+      });
+
+      await refreshData();
+
+      if (selectedAccountId === account.id && activeForm === 'adjust') {
+        closeForm();
+      }
+
+      setSuccess('Conta encerrada com sucesso.');
+    } catch (currentError) {
+      setError(currentError instanceof Error ? currentError.message : 'Falha ao encerrar conta.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (isLoading) {
     return <RoutePlaceholder title="Contas" description="Carregando contas..." />;
   }
@@ -316,12 +359,29 @@ export function AccountsPage() {
               <li key={account.id}>
                 <strong>{account.name}</strong> ({account.nature}) -{' '}
                 {formatCurrencyFromCents(account.openingBalanceCents)}{' '}
+                [{account.status === 'closed' ? 'Encerrada' : 'Ativa'}]{' '}
+                {account.closedAt ? `(encerrada em ${new Date(account.closedAt).toLocaleDateString('pt-BR')})` : ''}
                 <button type="button" onClick={() => startEdit(account)} style={{ marginLeft: '0.5rem' }}>
                   Editar
                 </button>
-                <button type="button" onClick={() => startAdjust(account)} style={{ marginLeft: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => startAdjust(account)}
+                  style={{ marginLeft: '0.5rem' }}
+                  disabled={account.status === 'closed'}
+                >
                   Ajustar saldo
                 </button>
+                {account.status === 'active' ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleCloseAccount(account)}
+                    style={{ marginLeft: '0.5rem' }}
+                    disabled={isSaving}
+                  >
+                    Encerrar conta
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={() => void handleDeleteAccount(account)}

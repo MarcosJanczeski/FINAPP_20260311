@@ -309,6 +309,8 @@ tipo
 natureza (ativo/passivo)
 conta contábil vinculada
 saldo inicial
+status (active/closed)
+closedAt
 ```
 
 Tipos:
@@ -337,6 +339,8 @@ Regra de edição:
 * lançamentos devem manter rastreio pela referência da conta editada
 * exclusão física só é permitida quando a conta não possui lançamentos contábeis vinculados
 * conta com lançamentos vinculados deve seguir fluxo de ajuste ou encerramento
+* conta encerrada não permite novos ajustes operacionais de saldo inicial
+* conta encerrada permanece visível para histórico
 
 ---
 

@@ -20,6 +20,10 @@ export class AdjustAccountOpeningUseCase {
       throw new Error('Conta nao encontrada para este centro de controle.');
     }
 
+    if (account.status === 'closed') {
+      throw new Error('Conta encerrada nao permite ajuste de saldo inicial.');
+    }
+
     const openingBalanceCents = Math.trunc(input.openingBalanceCents);
     if (openingBalanceCents < 0) {
       throw new Error('Saldo inicial nao pode ser negativo.');

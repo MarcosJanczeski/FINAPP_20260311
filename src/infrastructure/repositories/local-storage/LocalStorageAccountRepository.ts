@@ -34,6 +34,13 @@ export class LocalStorageAccountRepository implements AccountRepository {
   }
 
   private readAll(): Account[] {
-    return this.storage.getItem<Account[]>(STORAGE_KEYS.accounts) ?? [];
+    const accounts = this.storage.getItem<Account[]>(STORAGE_KEYS.accounts) ?? [];
+
+    return accounts.map((account) => ({
+      ...account,
+      status: account.status ?? 'active',
+      closedAt: account.closedAt ?? null,
+      updatedAt: account.updatedAt ?? account.createdAt,
+    }));
   }
 }
