@@ -766,7 +766,7 @@ Tela de lançamentos contábeis:
 * cabeçalho mínimo por lançamento: data, descrição, tipo, referência e valor do lançamento
 * detalhamento obrigatório das partidas: conta contábil (`código - nome`), débito e crédito em cada linha do lançamento
 * filtros mínimos: tipo de lançamento e texto (descrição/referência)
-* ação de "novo lançamento avançado" prevista por botão na tela (não formulário fixo), mantendo nesta etapa apenas placeholder estrutural
+* ação de "novo lançamento avançado" por botão na tela (não formulário fixo), abrindo painel sob demanda com fechamento pelo usuário nesta etapa
 
 Plano de contas básico por centro de controle:
 

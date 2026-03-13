@@ -298,7 +298,7 @@ No MVP atual, a presentation inclui página dedicada para razão contábil (`/le
 * listagem de `LedgerEntry` com visualização das `lines` (partidas) por lançamento
 * detalhamento por linha com conta, débito e crédito, priorizando leitura mobile-first
 * filtros básicos por tipo e texto
-* ação de lançamento avançado preparada como botão/CTA (sem formulário fixo nesta etapa), para evolução futura
+* ação de lançamento avançado preparada como botão/CTA (sem formulário fixo), abrindo painel sob demanda com fechamento pelo usuário nesta etapa
 
 ---
 

@@ -23,6 +23,7 @@ export function LedgerPage() {
   const [error, setError] = useState<string | null>(null);
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
   const [ledgerAccounts, setLedgerAccounts] = useState<LedgerAccount[]>([]);
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
   const [typeFilter, setTypeFilter] = useState<'all' | LedgerEntry['referenceType']>('all');
   const [textFilter, setTextFilter] = useState('');
@@ -125,6 +126,10 @@ export function LedgerPage() {
           onChange={(event) => setTextFilter(event.target.value)}
           placeholder="Digite para filtrar"
         />
+
+        <button type="button" onClick={() => setIsAdvancedOpen(true)}>
+          Novo lançamento avançado
+        </button>
       </section>
 
       <section style={{ marginTop: '1rem' }}>
@@ -200,10 +205,25 @@ export function LedgerPage() {
         )}
       </section>
 
-      <section style={{ marginTop: '1rem' }}>
-        <h2>Novo lançamento avançado</h2>
-        <p>Placeholder preparado. Em etapa futura, este bloco terá formulário contábil completo.</p>
-      </section>
+      {isAdvancedOpen ? (
+        <section
+          style={{
+            marginTop: '1rem',
+            border: '1px solid #d7d7d7',
+            borderRadius: 8,
+            padding: '0.75rem',
+            display: 'grid',
+            gap: '0.5rem',
+            maxWidth: 420,
+          }}
+        >
+          <h2>Novo lançamento avançado</h2>
+          <p>Funcionalidade em evolução. O formulário contábil completo será implementado em etapa futura.</p>
+          <button type="button" onClick={() => setIsAdvancedOpen(false)}>
+            Fechar
+          </button>
+        </section>
+      ) : null}
     </RoutePlaceholder>
   );
 }
