@@ -518,6 +518,19 @@ Invariante:
 a previsão base não inclui a própria margem orçamentária (evita dupla contagem)
 ```
 
+Separação arquitetural obrigatória:
+
+* `PlanningEvent` para projeção/planejamento (camada operacional de cenário)
+* `LedgerEntry` para escrituração oficial (camada contábil)
+* `PlanningEvent` nunca substitui `LedgerEntry`; postagem contábil ocorre por transição controlada
+
+Estados/transições mínimas de `PlanningEvent`:
+
+* status: `active`, `confirmed`, `canceled`, `posted`
+* fluxo base: `previsto -> confirmado -> postado`
+* cancelamento permitido em `previsto` e `confirmado`
+* cancelamento bloqueado em `postado`
+
 ---
 
 ### Gráfico e timeline devem usar a mesma base

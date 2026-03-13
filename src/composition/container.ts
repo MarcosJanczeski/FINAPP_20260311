@@ -13,6 +13,11 @@ import { UpdateAccountProfileUseCase } from '../application/use-cases/UpdateAcco
 import { AdjustAccountOpeningUseCase } from '../application/use-cases/AdjustAccountOpeningUseCase';
 import { DeleteAccountUseCase } from '../application/use-cases/DeleteAccountUseCase';
 import { CloseAccountUseCase } from '../application/use-cases/CloseAccountUseCase';
+import { ListPlanningEventsUseCase } from '../application/use-cases/ListPlanningEventsUseCase';
+import { UpsertPlanningEventUseCase } from '../application/use-cases/UpsertPlanningEventUseCase';
+import { ConfirmPlanningEventUseCase } from '../application/use-cases/ConfirmPlanningEventUseCase';
+import { CancelPlanningEventUseCase } from '../application/use-cases/CancelPlanningEventUseCase';
+import { PostPlanningEventUseCase } from '../application/use-cases/PostPlanningEventUseCase';
 
 export interface AppContainer {
   repositories: ReturnType<typeof createLocalStorageRepositories>;
@@ -30,6 +35,11 @@ export interface AppContainer {
     adjustAccountOpening: AdjustAccountOpeningUseCase;
     deleteAccount: DeleteAccountUseCase;
     closeAccount: CloseAccountUseCase;
+    listPlanningEvents: ListPlanningEventsUseCase;
+    upsertPlanningEvent: UpsertPlanningEventUseCase;
+    confirmPlanningEvent: ConfirmPlanningEventUseCase;
+    cancelPlanningEvent: CancelPlanningEventUseCase;
+    postPlanningEvent: PostPlanningEventUseCase;
   };
 }
 
@@ -72,6 +82,11 @@ export function createAppContainer(): AppContainer {
       repositories.ledgerEntryRepository,
     ),
     closeAccount: new CloseAccountUseCase(repositories.accountRepository),
+    listPlanningEvents: new ListPlanningEventsUseCase(repositories.planningEventRepository),
+    upsertPlanningEvent: new UpsertPlanningEventUseCase(repositories.planningEventRepository),
+    confirmPlanningEvent: new ConfirmPlanningEventUseCase(repositories.planningEventRepository),
+    cancelPlanningEvent: new CancelPlanningEventUseCase(repositories.planningEventRepository),
+    postPlanningEvent: new PostPlanningEventUseCase(repositories.planningEventRepository),
   };
 
   return {

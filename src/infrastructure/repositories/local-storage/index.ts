@@ -10,6 +10,7 @@ import {
 } from './LocalStorageLedgerRepository';
 import { LocalStoragePersonRepository } from './LocalStoragePersonRepository';
 import { LocalStorageUserRepository } from './LocalStorageUserRepository';
+import { LocalStoragePlanningEventRepository } from './LocalStoragePlanningEventRepository';
 import type { StorageDriver } from '../../storage/local-storage/driver';
 
 export function createLocalStorageRepositories(storage: StorageDriver) {
@@ -20,6 +21,7 @@ export function createLocalStorageRepositories(storage: StorageDriver) {
     userRepository: new LocalStorageUserRepository(storage),
     personRepository: new LocalStoragePersonRepository(storage),
     accountRepository: new LocalStorageAccountRepository(storage),
+    planningEventRepository: new LocalStoragePlanningEventRepository(storage),
     ledgerAccountRepository: new LocalStorageLedgerAccountRepository(storage),
     ledgerEntryRepository: new LocalStorageLedgerEntryRepository(storage),
     controlCenterMembershipRepository: membershipRepository,

@@ -759,6 +759,28 @@ recorrências
 transações
 ```
 
+Modelo de separação obrigatório para evolução:
+
+* `PlanningEvent` (camada de projeção/planejamento): eventos candidatos a lançamento e eventos de apoio ao cenário
+* `LedgerEntry` (camada contábil oficial): apenas lançamentos confirmados/postados em partidas dobradas
+
+Regra de ouro:
+
+* balanço, DRE e relatórios contábeis oficiais usam somente `LedgerEntry`
+* projeção e planejamento usam `PlanningEvent` + fatos realizados
+
+Estados e tipos mínimos em `PlanningEvent`:
+
+* tipos: `realizado`, `confirmado_agendado`, `previsto_recorrencia`, `previsto_margem`
+* status: `active`, `confirmed`, `canceled`, `posted`
+* vínculo de auditoria com contabilidade: `postedLedgerEntryId` quando houver postagem
+
+Transições mínimas:
+
+* `previsto` -> `confirmado_agendado` -> `postado`
+* `previsto` -> `cancelado`
+* `confirmado_agendado` -> `cancelado` (não permitido se já estiver `postado`)
+
 ---
 
 ## Contabilidade (Ledger)
