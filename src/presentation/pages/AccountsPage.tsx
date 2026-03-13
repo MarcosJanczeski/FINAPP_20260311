@@ -345,6 +345,7 @@ export function AccountsPage() {
         </button>
         <Link to={ROUTES.dashboard}>Voltar para dashboard</Link>
         <Link to={ROUTES.ledger}>Ir para lançamentos</Link>
+        <Link to={ROUTES.creditCards}>Proximo: cartoes</Link>
       </div>
 
       {success ? <p>{success}</p> : null}

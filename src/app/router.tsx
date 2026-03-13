@@ -4,9 +4,13 @@ import { RequireAuth } from '../presentation/components/RequireAuth';
 import { RequireGuest } from '../presentation/components/RequireGuest';
 import { DashboardPage } from '../presentation/pages/DashboardPage';
 import { AccountsPage } from '../presentation/pages/AccountsPage';
+import { CreditCardsPage } from '../presentation/pages/CreditCardsPage';
 import { LedgerPage } from '../presentation/pages/LedgerPage';
 import { HomePage } from '../presentation/pages/HomePage';
 import { LoginPage } from '../presentation/pages/LoginPage';
+import { PlanningPage } from '../presentation/pages/PlanningPage';
+import { ProjectionPage } from '../presentation/pages/ProjectionPage';
+import { RecurrencesPage } from '../presentation/pages/RecurrencesPage';
 import { SignupPage } from '../presentation/pages/SignupPage';
 import { WelcomePage } from '../presentation/pages/WelcomePage';
 
@@ -60,6 +64,38 @@ export const appRouter = createBrowserRouter([
     element: (
       <RequireAuth>
         <LedgerPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: ROUTES.creditCards,
+    element: (
+      <RequireAuth>
+        <CreditCardsPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: ROUTES.recurrences,
+    element: (
+      <RequireAuth>
+        <RecurrencesPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: ROUTES.projection,
+    element: (
+      <RequireAuth>
+        <ProjectionPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: ROUTES.planning,
+    element: (
+      <RequireAuth>
+        <PlanningPage />
       </RequireAuth>
     ),
   },

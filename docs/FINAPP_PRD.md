@@ -240,6 +240,17 @@ Regras operacionais do onboarding:
   * se pessoa + centro de controle estiverem completos, direcionar para dashboard
   * se estiver incompleto, direcionar para boas-vindas
 
+Status atual de implementação (MVP em desenvolvimento):
+
+* sequência do tour já navegável com placeholders mínimos em:
+  * `contas -> cartões -> recorrências -> projeção -> planejamento`
+* rotas de placeholder atuais:
+  * `/credit-cards`
+  * `/recurrences`
+  * `/projection`
+  * `/planning`
+* objetivo atual: validar jornada e transições antes da implementação funcional completa de cada módulo
+
 ---
 
 # 5. Criação de Conta

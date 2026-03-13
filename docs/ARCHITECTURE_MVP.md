@@ -134,6 +134,12 @@ Consequência técnica:
   * login com onboarding completo (pessoa + centro) -> dashboard
   * login com onboarding incompleto -> boas-vindas
 
+Status atual de desenvolvimento do tour:
+
+* fluxo navegável já disponível entre `contas -> cartões -> recorrências -> projeção -> planejamento`
+* rotas atuais de placeholder do tour: `/credit-cards`, `/recurrences`, `/projection`, `/planning`
+* placeholders existem para validar sequência e navegação mobile-first, sem regras de negócio finais nesta etapa
+
 ---
 
 # Estrutura de Pastas
