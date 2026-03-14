@@ -25,6 +25,12 @@ const DEFAULT_LEDGER_ACCOUNTS: ReadonlyArray<Omit<LedgerAccount, 'id' | 'created
       isSystem: true,
     },
     {
+      code: 'ATIVO:RECEBIVEIS',
+      name: 'Ativo - Recebiveis',
+      kind: 'asset',
+      isSystem: true,
+    },
+    {
       code: 'PASSIVO:OBRIGACOES',
       name: 'Passivo - Obrigacoes',
       kind: 'liability',

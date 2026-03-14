@@ -44,6 +44,7 @@ export class SyncPlanningEventsUseCase {
         sourceType: sourceItem.sourceType,
         sourceId: sourceItem.sourceId,
         sourceEventKey: sourceItem.sourceEventKey,
+        ledgerLinks: current?.ledgerLinks ?? [],
         postedLedgerEntryId: current?.postedLedgerEntryId ?? null,
         createdAt: current?.createdAt ?? now,
         updatedAt: now,

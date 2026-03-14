@@ -10,6 +10,14 @@ export type PlanningEventStatus = 'active' | 'confirmed' | 'canceled' | 'posted'
 
 export type PlanningEventDirection = 'inflow' | 'outflow';
 
+export type PlanningEventLedgerRelation = 'recognition' | 'settlement' | 'reversal';
+
+export interface PlanningEventLedgerLink {
+  ledgerEntryId: ID;
+  relation: PlanningEventLedgerRelation;
+  createdAt: ISODateString;
+}
+
 export interface PlanningEvent {
   id: ID;
   controlCenterId: ID;
@@ -22,6 +30,7 @@ export interface PlanningEvent {
   sourceType: 'manual' | 'recurrence' | 'budget_margin' | 'payable' | 'receivable' | 'import';
   sourceId: ID | null;
   sourceEventKey: string | null;
+  ledgerLinks: PlanningEventLedgerLink[];
   postedLedgerEntryId: ID | null;
   createdAt: ISODateString;
   updatedAt: ISODateString;

@@ -105,7 +105,7 @@ export function ProjectionPage() {
 
   const handleConfirm = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!selectedEvent || !controlCenterId || !confirmedDate) {
+    if (!selectedEvent || !controlCenterId || !confirmedDate || !session) {
       setError('Dados de confirmacao invalidos.');
       return;
     }
@@ -118,6 +118,7 @@ export function ProjectionPage() {
       await container.useCases.confirmRecurrencePlanningEvent.execute({
         id: selectedEvent.id,
         controlCenterId,
+        confirmedByUserId: session.userId,
         confirmedDate: inputValueToIsoDateAtNoonUtc(confirmedDate),
         confirmedAmountCents,
       });

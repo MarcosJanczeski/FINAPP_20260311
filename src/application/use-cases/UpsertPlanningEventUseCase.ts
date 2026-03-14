@@ -44,6 +44,7 @@ export class UpsertPlanningEventUseCase {
       sourceType: input.sourceType,
       sourceId: input.sourceId ?? null,
       sourceEventKey: input.sourceEventKey ?? existing?.sourceEventKey ?? null,
+      ledgerLinks: existing?.ledgerLinks ?? [],
       postedLedgerEntryId: existing?.postedLedgerEntryId ?? null,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,

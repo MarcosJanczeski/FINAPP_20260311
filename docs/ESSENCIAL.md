@@ -32,9 +32,12 @@ Olha só, vou te passar o que tenho em mente:
 - status atual de desenvolvimento: as etapas pós-contas (`cartões`, `recorrências`, `projeção` e `planejamento`) estão disponíveis como placeholders navegáveis para validação da jornada.
 - para evitar contaminação da contabilidade oficial, projeção/planejamento deve usar eventos próprios (`PlanningEvent`) separados do razão contábil.
 - a sincronização de `PlanningEvent` deve ser idempotente por chave de origem (`sourceEventKey`) para evitar duplicidade em reprocessamentos.
-- relatórios contábeis oficiais (balanço, dre e derivados) devem usar somente `LedgerEntry` postado/confirmado, nunca previsões.
+- relatórios contábeis oficiais (balanço, dre e derivados) devem usar somente `LedgerEntry` reconhecido/liquidado, nunca previsões.
 - eventos de planejamento/projeção devem suportar ao menos os tipos: `realizado`, `confirmado_agendado`, `previsto_recorrencia`, `previsto_margem`.
-- transições mínimas: `previsto -> confirmado_agendado -> postado`; `previsto -> cancelado`; `confirmado_agendado -> cancelado` (bloqueado se já `postado`).
+- fluxo principal de recorrência: `previsto -> confirmado -> realizado`.
+- ao confirmar, deve ocorrer reconhecimento contábil auditável da obrigação/direito; ao realizar, deve ocorrer liquidação.
+- reversão de confirmação deve ocorrer por estorno/compensação, sem apagar histórico.
+- um `PlanningEvent` pode se relacionar com múltiplos `LedgerEntry` (ex.: reconhecimento, liquidação, estorno), mantendo rastreabilidade.
 - ao editar a coluna orçamento o usuário vê o reflexo dos ajustes no gráfico considerando que este orçamento é válido para os períodos futuros.
 - regra de margem orçamentária para projeção:
 1- margem = orçamento - comprometido

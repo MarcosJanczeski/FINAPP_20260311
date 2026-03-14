@@ -11,7 +11,11 @@ export interface LedgerEntry {
   controlCenterId: ID;
   date: ISODateString;
   description: string;
-  referenceType: 'account_opening' | 'account_opening_reversal' | 'account_opening_adjustment';
+  referenceType:
+    | 'account_opening'
+    | 'account_opening_reversal'
+    | 'account_opening_adjustment'
+    | 'recurrence_recognition';
   referenceId: ID;
   lines: LedgerEntryLine[];
   createdByUserId?: ID;

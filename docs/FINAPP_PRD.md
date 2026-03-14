@@ -480,7 +480,7 @@ Status de implementação (MVP atual):
 
 * periodicidade inicial suportada: `monthly`
 * ao salvar/editar recorrência mensal ativa, a projeção gera eventos para mês atual + 3 meses
-* na projeção, `previsto_recorrencia` pode ser confirmado com ajuste de data/valor e passa para `confirmado_agendado` (`confirmed`), sem `LedgerEntry` nesta etapa
+* na projeção, `previsto_recorrencia` pode ser confirmado com ajuste de data/valor e passa para `confirmado_agendado` (`confirmed`) com reconhecimento contábil auditável
 * a projeção já exibe resumo de saldo de disponibilidades: saldo base atual, entradas projetadas, saídas projetadas e saldo projetado final (janela mês atual + 3 meses)
 
 ---
@@ -791,16 +791,18 @@ Regra de ouro:
 Estados e tipos mínimos em `PlanningEvent`:
 
 * tipos: `realizado`, `confirmado_agendado`, `previsto_recorrencia`, `previsto_margem`
-* status: `active`, `confirmed`, `canceled`, `posted`
+* estado de negócio principal: `previsto`, `confirmado`, `realizado`
+* status técnico atual suportado: `active`, `confirmed`, `canceled`, `posted` (quando existir, não deve ser tratado como etapa funcional principal do fluxo de recorrência)
 * campos mínimos de origem: `sourceType`, `sourceId`, `sourceEventKey`
 * `sourceEventKey` deve garantir idempotência de sincronização (reprocessar sem duplicar evento)
-* vínculo de auditoria com contabilidade: `postedLedgerEntryId` quando houver postagem
+* vínculo de auditoria com contabilidade: `ledgerLinks[]` para suportar múltiplos lançamentos relacionados (`recognition`, `settlement`, `reversal`)
 
 Transições mínimas:
 
-* `previsto` -> `confirmado_agendado` -> `postado`
+* `previsto` -> `confirmado_agendado` (reconhecimento contábil)
+* `confirmado_agendado` -> `realizado` (liquidação contábil em etapa posterior)
 * `previsto` -> `cancelado`
-* `confirmado_agendado` -> `cancelado` (não permitido se já estiver `postado`)
+* `confirmado_agendado` -> `cancelado` por estorno/compensação, sem apagar histórico
 
 Status técnico atual da projeção (MVP):
 

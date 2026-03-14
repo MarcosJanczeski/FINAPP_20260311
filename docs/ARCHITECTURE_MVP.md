@@ -543,18 +543,22 @@ Separação arquitetural obrigatória:
 * `LedgerEntry` para escrituração oficial (camada contábil)
 * `PlanningEvent` nunca substitui `LedgerEntry`; postagem contábil ocorre por transição controlada
 * sincronização de `PlanningEvent` deve ser idempotente por `sourceEventKey`
+* cada `PlanningEvent` deve suportar múltiplos vínculos contábeis (`ledgerLinks[]`) para reconhecimento, liquidação e estorno
 
 Estados/transições mínimas de `PlanningEvent`:
 
-* status: `active`, `confirmed`, `canceled`, `posted`
-* fluxo base: `previsto -> confirmado -> postado`
+* fluxo de negócio principal: `previsto -> confirmado -> realizado`
+* confirmação deve gerar reconhecimento contábil auditável
+* realização deve gerar baixa/liquidação contábil correspondente
 * cancelamento permitido em `previsto` e `confirmado`
-* cancelamento bloqueado em `postado`
+* reversão de confirmação deve ocorrer por estorno/compensação, sem apagar histórico
+* `posted` pode existir como detalhe técnico interno, sem substituir estados de negócio
 
 Componentes técnicos mínimos (etapa atual):
 
 * `SyncPlanningEventsUseCase` para consolidar eventos automáticos de projeção
 * `GetProjectionAvailabilitySummaryUseCase` para consolidar resumo de saldo projetado de disponibilidades
+* confirmação de recorrência já gera `LedgerEntry` de reconhecimento com referência auditável
 * providers de origem (recorrência/margem) desacoplados via contrato
 * provider real de recorrência mensal ativo; provider de margem permanece em `noop` nesta etapa
 * conversões de data na projeção devem usar formato estável (`YYYY-MM-DD` + horário neutro) para evitar deslocamento de um dia por fuso horário

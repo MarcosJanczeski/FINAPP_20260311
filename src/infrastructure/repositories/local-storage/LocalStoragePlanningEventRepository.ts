@@ -37,6 +37,7 @@ export class LocalStoragePlanningEventRepository implements PlanningEventReposit
       ...event,
       sourceId: event.sourceId ?? null,
       sourceEventKey: event.sourceEventKey ?? null,
+      ledgerLinks: event.ledgerLinks ?? [],
       postedLedgerEntryId: event.postedLedgerEntryId ?? null,
       updatedAt: event.updatedAt ?? event.createdAt,
       status: event.status ?? 'active',

@@ -113,6 +113,8 @@ export function createAppContainer(): AppContainer {
     upsertRecurrence: new UpsertRecurrenceUseCase(repositories.recurrenceRepository),
     confirmRecurrencePlanningEvent: new ConfirmRecurrencePlanningEventUseCase(
       repositories.planningEventRepository,
+      repositories.ledgerAccountRepository,
+      repositories.ledgerEntryRepository,
     ),
     getProjectionAvailabilitySummary: new GetProjectionAvailabilitySummaryUseCase(
       repositories.accountRepository,
