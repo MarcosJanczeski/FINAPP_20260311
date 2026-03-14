@@ -13,6 +13,14 @@ Regra de precedência:
 * em caso de conflito entre arquitetura, PRD e demais artefatos, prevalece `ESSENCIAL.md`
 * conflitos devem ser resolvidos por alinhamento de entendimento e atualização dos documentos antes de consolidar implementação
 
+# Regras de Desenvolvimento
+
+As regras permanentes para agentes de IA durante o desenvolvimento estão em:
+
+```text
+docs/AI_RULES.md
+```
+
 ## Objetivo deste documento
 
 Este documento define a arquitetura do MVP do **FINAPP**, garantindo que o código seja organizado de forma que:
