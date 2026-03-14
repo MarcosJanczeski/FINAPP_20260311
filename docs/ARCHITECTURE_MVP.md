@@ -470,6 +470,17 @@ Observação:
 
 Estas regras devem ser respeitadas desde o MVP.
 
+### Regras de proteção do domínio financeiro (mandatórias)
+
+* separar rigorosamente `real events` de `planned events`
+* projeção deve consumir `PlanningEvent` e nunca reescrever histórico real
+* saldo real muda apenas por transação real; projeção não altera saldo contábil/operacional real
+* integridade de cartão: compra aumenta obrigação, pagamento de fatura reduz caixa
+* trilha de auditoria obrigatória para eventos gerados (`sourceId`/`sourceEventKey`/referências)
+* prevenir dupla contagem por desenho (compra x fatura, parcela x compra cheia, recorrência duplicada)
+* ajustes financeiros devem ser aditivos (novos registros), sem sobrescrever histórico de ledger
+* quando regra financeira estiver ambígua, interromper implementação e alinhar antes de seguir
+
 ### Compra no cartão não reduz saldo disponível
 
 O saldo da conta só muda quando ocorre:

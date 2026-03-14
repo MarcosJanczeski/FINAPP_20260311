@@ -736,6 +736,18 @@ Resultado = Receitas − Despesas
 
 O sistema possui três camadas.
 
+Regras mandatórias de proteção financeira (transversais ao produto):
+
+* separar eventos reais de eventos planejados; planejamento/projeção não altera histórico real
+* projeção não pode alterar saldo real de disponibilidades
+* compras no cartão geram obrigação futura e não reduzem caixa no ato da compra
+* pagamento de fatura deve ser o evento que impacta caixa/banco
+* totais de fatura devem ser iguais à soma dos itens importados/classificados
+* eventos gerados (parcelas, recorrências, previsões) devem manter rastreabilidade de origem
+* evitar dupla contagem em todos os fluxos financeiros
+* ajustes devem criar novos registros; não reescrever histórico contábil silenciosamente
+* inconsistências financeiras devem bloquear avanço até esclarecimento explícito da regra
+
 ---
 
 ## Planejamento

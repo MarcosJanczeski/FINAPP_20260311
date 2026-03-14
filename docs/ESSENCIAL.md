@@ -63,4 +63,16 @@ Olha só, vou te passar o que tenho em mente:
 5- manter vínculo de auditoria entre origem e destino
 
 -creio que a parte mais complexa do processo está abrangida nestes passos. o restante creio que seja mais simples.
+
+- regras mandatórias de proteção do domínio financeiro:
+1- separar estritamente eventos reais de eventos planejados; projeção nunca altera histórico real.
+2- compra no cartão não reduz disponibilidades; reduz limite e aumenta obrigação do cartão; caixa só muda no pagamento da fatura.
+3- parcelamentos e recorrências geram obrigações/eventos futuros rastreáveis à origem.
+4- saldos reais só mudam com transação real; exclusões/ajustes não podem quebrar integridade silenciosamente.
+5- lançamentos contábeis não devem ser apagados silenciosamente; ajustes devem gerar novos registros.
+6- projeções devem ser determinísticas e reversíveis, sem efeitos financeiros ocultos.
+7- verificar consistência financeira em cada evolução: totais, duplicidade de impacto e coerência de fluxo.
+8- prevenir dupla contagem (compra x fatura, parcela x compra total, recorrência duplicada).
+9- preservar rastreabilidade explicável de todos os números e eventos gerados.
+10- quando houver dúvida de regra financeira, parar e alinhar antes de implementar.
  
