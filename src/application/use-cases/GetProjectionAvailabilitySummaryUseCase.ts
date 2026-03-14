@@ -43,7 +43,7 @@ function isProjectedEvent(event: PlanningEvent, windowStart: Date, windowEnd: Da
     return false;
   }
 
-  const date = new Date(event.date);
+  const date = new Date(event.dueDate);
   return date >= windowStart && date <= windowEnd;
 }
 

@@ -33,10 +33,17 @@ export function ProjectionPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [controlCenterId, setControlCenterId] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [confirmedDate, setConfirmedDate] = useState('');
+  const [documentDate, setDocumentDate] = useState('');
+  const [dueDate, setDueDate] = useState('');
   const [confirmedAmountCents, setConfirmedAmountCents] = useState(0);
   const [availabilitySummary, setAvailabilitySummary] =
     useState<ProjectionAvailabilitySummaryView | null>(null);
+  const todayInputDate = useMemo(() => {
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${now.getFullYear()}-${month}-${day}`;
+  }, []);
 
   const refresh = async () => {
     if (!session) {
@@ -57,6 +64,10 @@ export function ProjectionPage() {
   const selectedEvent = useMemo(
     () => events.find((event) => event.id === selectedEventId) ?? null,
     [events, selectedEventId],
+  );
+  const visibleEvents = useMemo(
+    () => events.filter((event) => event.status !== 'canceled'),
+    [events],
   );
 
   useEffect(() => {
@@ -91,7 +102,8 @@ export function ProjectionPage() {
 
   const startConfirm = (event: PlanningEvent) => {
     setSelectedEventId(event.id);
-    setConfirmedDate(isoDateToInputValue(event.date));
+    setDocumentDate(todayInputDate);
+    setDueDate(isoDateToInputValue(event.dueDate));
     setConfirmedAmountCents(event.amountCents);
     setError(null);
     setSuccess(null);
@@ -99,14 +111,23 @@ export function ProjectionPage() {
 
   const cancelConfirm = () => {
     setSelectedEventId(null);
-    setConfirmedDate('');
+    setDocumentDate('');
+    setDueDate('');
     setConfirmedAmountCents(0);
   };
 
   const handleConfirm = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!selectedEvent || !controlCenterId || !confirmedDate || !session) {
+    if (!selectedEvent || !controlCenterId || !documentDate || !dueDate || !session) {
       setError('Dados de confirmacao invalidos.');
+      return;
+    }
+    if (documentDate > todayInputDate) {
+      setError('Data do fato/documento nao pode estar no futuro.');
+      return;
+    }
+    if (dueDate < documentDate) {
+      setError('Data de vencimento nao pode ser anterior a data do fato/documento.');
       return;
     }
 
@@ -119,7 +140,9 @@ export function ProjectionPage() {
         id: selectedEvent.id,
         controlCenterId,
         confirmedByUserId: session.userId,
-        confirmedDate: inputValueToIsoDateAtNoonUtc(confirmedDate),
+        documentDate: inputValueToIsoDateAtNoonUtc(documentDate),
+        dueDate: inputValueToIsoDateAtNoonUtc(dueDate),
+        plannedSettlementDate: inputValueToIsoDateAtNoonUtc(dueDate),
         confirmedAmountCents,
       });
       await refresh();
@@ -128,6 +151,42 @@ export function ProjectionPage() {
     } catch (currentError) {
       setError(
         currentError instanceof Error ? currentError.message : 'Falha ao confirmar recorrencia.',
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleReverseConfirmation = async (planningEvent: PlanningEvent) => {
+    if (!controlCenterId || !session) {
+      setError('Sessao ou centro de controle nao identificado.');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Deseja reverter a confirmacao da recorrencia \"${planningEvent.description}\"?`,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setError(null);
+    setSuccess(null);
+    setIsSaving(true);
+
+    try {
+      await container.useCases.reverseRecurrenceConfirmation.execute({
+        id: planningEvent.id,
+        controlCenterId,
+        reversedByUserId: session.userId,
+      });
+      await refresh();
+      setSuccess('Confirmacao revertida por estorno com sucesso.');
+    } catch (currentError) {
+      setError(
+        currentError instanceof Error
+          ? currentError.message
+          : 'Falha ao reverter confirmacao da recorrencia.',
       );
     } finally {
       setIsSaving(false);
@@ -177,22 +236,32 @@ export function ProjectionPage() {
       <section style={{ marginTop: '1rem' }}>
         <h2>Eventos de projecao (PlanningEvent)</h2>
         {isLoading ? <p>Carregando eventos...</p> : null}
-        {!isLoading && events.length === 0 ? (
+        {!isLoading && visibleEvents.length === 0 ? (
           <p>
             Nenhum evento automatico ainda. Nesta etapa, as fontes de recorrencia e margem estao
             preparadas como stubs para evolucao.
           </p>
         ) : null}
 
-        {events.length > 0 ? (
+        {visibleEvents.length > 0 ? (
           <ul>
-            {events.map((event) => (
+            {visibleEvents.map((event) => (
               <li key={event.id}>
-                {formatDatePtBrFromIso(event.date)} | {event.type} | {event.status}{' '}
+                {formatDatePtBrFromIso(event.dueDate)} | {event.type} | {event.status}{' '}
                 | {event.description} | {formatCurrencyFromCents(event.amountCents)}{' '}
                 {event.type === 'previsto_recorrencia' && event.status === 'active' ? (
                   <button type="button" onClick={() => startConfirm(event)} style={{ marginLeft: '0.5rem' }}>
                     Confirmar recorrencia
+                  </button>
+                ) : null}
+                {event.type === 'confirmado_agendado' && event.status === 'confirmed' ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleReverseConfirmation(event)}
+                    style={{ marginLeft: '0.5rem' }}
+                    disabled={isSaving}
+                  >
+                    Reverter confirmacao
                   </button>
                 ) : null}
               </li>
@@ -206,12 +275,23 @@ export function ProjectionPage() {
           <h2>Confirmar recorrencia prevista</h2>
           <p>{selectedEvent.description}</p>
           <form onSubmit={handleConfirm} style={{ display: 'grid', gap: '0.5rem', maxWidth: 380 }}>
-            <label htmlFor="confirm-date">Data confirmada</label>
+            <label htmlFor="confirm-document-date">Data do fato/documento</label>
             <input
-              id="confirm-date"
+              id="confirm-document-date"
               type="date"
-              value={confirmedDate}
-              onChange={(event) => setConfirmedDate(event.target.value)}
+              value={documentDate}
+              onChange={(event) => setDocumentDate(event.target.value)}
+              max={todayInputDate}
+              required
+            />
+
+            <label htmlFor="confirm-due-date">Data de vencimento</label>
+            <input
+              id="confirm-due-date"
+              type="date"
+              value={dueDate}
+              onChange={(event) => setDueDate(event.target.value)}
+              min={documentDate || undefined}
               required
             />
 

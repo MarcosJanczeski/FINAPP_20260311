@@ -14,7 +14,7 @@ export class LocalStoragePlanningEventRepository implements PlanningEventReposit
   async listByControlCenter(controlCenterId: ID): Promise<PlanningEvent[]> {
     return this.readAll()
       .filter((event) => event.controlCenterId === controlCenterId)
-      .sort((a, b) => (a.date > b.date ? 1 : -1));
+      .sort((a, b) => (a.dueDate > b.dueDate ? 1 : -1));
   }
 
   async save(event: PlanningEvent): Promise<void> {
@@ -35,6 +35,10 @@ export class LocalStoragePlanningEventRepository implements PlanningEventReposit
 
     return events.map((event) => ({
       ...event,
+      date: event.date,
+      documentDate: event.documentDate ?? event.dueDate ?? event.date,
+      dueDate: event.dueDate ?? event.date,
+      plannedSettlementDate: event.plannedSettlementDate ?? event.dueDate ?? event.date,
       sourceId: event.sourceId ?? null,
       sourceEventKey: event.sourceEventKey ?? null,
       ledgerLinks: event.ledgerLinks ?? [],

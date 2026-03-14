@@ -10,7 +10,9 @@ interface ConfirmRecurrencePlanningEventInput {
   id: ID;
   controlCenterId: ID;
   confirmedByUserId: ID;
-  confirmedDate: ISODateString;
+  documentDate: ISODateString;
+  dueDate: ISODateString;
+  plannedSettlementDate: ISODateString;
   confirmedAmountCents: number;
 }
 
@@ -24,6 +26,18 @@ export class ConfirmRecurrencePlanningEventUseCase {
   async execute(input: ConfirmRecurrencePlanningEventInput): Promise<PlanningEvent> {
     if (input.confirmedAmountCents < 0) {
       throw new Error('Valor confirmado deve ser maior ou igual a zero.');
+    }
+    const documentDateOnly = input.documentDate.slice(0, 10);
+    const today = new Date();
+    const todayLocal = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(
+      today.getDate(),
+    ).padStart(2, '0')}`;
+    if (documentDateOnly > todayLocal) {
+      throw new Error('Data do fato/documento nao pode estar no futuro.');
+    }
+    const dueDateOnly = input.dueDate.slice(0, 10);
+    if (dueDateOnly < documentDateOnly) {
+      throw new Error('Data de vencimento nao pode ser anterior a data do fato/documento.');
     }
 
     const event = await this.planningEventRepository.getById(input.id);
@@ -42,7 +56,7 @@ export class ConfirmRecurrencePlanningEventUseCase {
     const recognitionLedgerEntry = await this.buildRecognitionEntry({
       event,
       confirmedAmountCents: input.confirmedAmountCents,
-      confirmedDate: input.confirmedDate,
+      documentDate: input.documentDate,
       confirmedByUserId: input.confirmedByUserId,
     });
 
@@ -52,7 +66,10 @@ export class ConfirmRecurrencePlanningEventUseCase {
       ...event,
       type: 'confirmado_agendado',
       status: 'confirmed',
-      date: input.confirmedDate,
+      date: input.dueDate,
+      documentDate: input.documentDate,
+      dueDate: input.dueDate,
+      plannedSettlementDate: input.plannedSettlementDate,
       amountCents: input.confirmedAmountCents,
       ledgerLinks: [
         ...event.ledgerLinks.filter((link) => link.relation !== 'recognition'),
@@ -72,7 +89,7 @@ export class ConfirmRecurrencePlanningEventUseCase {
 
   private async buildRecognitionEntry(input: {
     event: PlanningEvent;
-    confirmedDate: ISODateString;
+    documentDate: ISODateString;
     confirmedAmountCents: number;
     confirmedByUserId: ID;
   }): Promise<LedgerEntry> {
@@ -109,7 +126,7 @@ export class ConfirmRecurrencePlanningEventUseCase {
     return {
       id: crypto.randomUUID(),
       controlCenterId: input.event.controlCenterId,
-      date: input.confirmedDate,
+      date: input.documentDate,
       description: `Reconhecimento recorrencia - ${input.event.description}`,
       referenceType: 'recurrence_recognition',
       referenceId: input.event.id,

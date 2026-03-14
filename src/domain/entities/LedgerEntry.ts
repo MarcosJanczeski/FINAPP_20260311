@@ -15,8 +15,10 @@ export interface LedgerEntry {
     | 'account_opening'
     | 'account_opening_reversal'
     | 'account_opening_adjustment'
-    | 'recurrence_recognition';
+    | 'recurrence_recognition'
+    | 'recurrence_reversal';
   referenceId: ID;
+  reversalOf?: ID;
   lines: LedgerEntryLine[];
   createdByUserId?: ID;
   reason?: string;

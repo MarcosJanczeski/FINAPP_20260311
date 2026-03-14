@@ -22,6 +22,9 @@ export interface PlanningEvent {
   id: ID;
   controlCenterId: ID;
   date: ISODateString;
+  documentDate: ISODateString;
+  dueDate: ISODateString;
+  plannedSettlementDate: ISODateString;
   description: string;
   type: PlanningEventType;
   status: PlanningEventStatus;

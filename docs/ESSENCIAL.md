@@ -37,7 +37,9 @@ Olha só, vou te passar o que tenho em mente:
 - fluxo principal de recorrência: `previsto -> confirmado -> realizado`.
 - ao confirmar, deve ocorrer reconhecimento contábil auditável da obrigação/direito; ao realizar, deve ocorrer liquidação.
 - reversão de confirmação deve ocorrer por estorno/compensação, sem apagar histórico.
+- regra de estorno em recorrência confirmada: o estorno deve usar a mesma data contábil (`date`) do lançamento original; `createdAt` registra a data/hora real da execução.
 - um `PlanningEvent` pode se relacionar com múltiplos `LedgerEntry` (ex.: reconhecimento, liquidação, estorno), mantendo rastreabilidade.
+- validações mínimas na confirmação de recorrência: `documentDate` não pode estar no futuro e `dueDate` não pode ser anterior a `documentDate`.
 - ao editar a coluna orçamento o usuário vê o reflexo dos ajustes no gráfico considerando que este orçamento é válido para os períodos futuros.
 - regra de margem orçamentária para projeção:
 1- margem = orçamento - comprometido

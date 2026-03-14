@@ -9,7 +9,9 @@ export interface PlanningEventSourceItem {
   sourceType: 'recurrence' | 'budget_margin' | 'payable' | 'receivable';
   sourceId: ID | null;
   sourceEventKey: string;
-  date: ISODateString;
+  documentDate: ISODateString;
+  dueDate: ISODateString;
+  plannedSettlementDate: ISODateString;
   description: string;
   type: PlanningEventType;
   status: Exclude<PlanningEventStatus, 'posted' | 'canceled'>;

@@ -803,6 +803,7 @@ Transições mínimas:
 * `confirmado_agendado` -> `realizado` (liquidação contábil em etapa posterior)
 * `previsto` -> `cancelado`
 * `confirmado_agendado` -> `cancelado` por estorno/compensação, sem apagar histórico
+* na reversão de confirmação, o estorno deve usar a mesma data contábil (`date`) do lançamento original; `createdAt` registra a data/hora real da execução e `reversalOf` referencia o lançamento original
 
 Status técnico atual da projeção (MVP):
 
@@ -810,6 +811,9 @@ Status técnico atual da projeção (MVP):
 * geração automática real por recorrência mensal já está ativa
 * geração por margem orçamentária permanece em stub (provider `noop`) nesta etapa
 * cálculo de resumo de disponibilidades é executado na camada de aplicação e não altera saldo real persistido
+* neste MVP, na confirmação de recorrência a UI edita apenas `documentDate` e `dueDate`; `plannedSettlementDate` é preenchida automaticamente com `dueDate` e o ajuste manual dessa data ficará para fluxo futuro
+* validações mínimas na confirmação: `documentDate` não pode ser futura e `dueDate` não pode ser anterior a `documentDate`
+* a listagem padrão da projeção exibe eventos não cancelados (`active`/`confirmed`), preservando `canceled` para rastreabilidade técnica
 
 ---
 

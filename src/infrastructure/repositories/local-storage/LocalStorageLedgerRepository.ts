@@ -46,6 +46,10 @@ export class LocalStorageLedgerAccountRepository implements LedgerAccountReposit
 export class LocalStorageLedgerEntryRepository implements LedgerEntryRepository {
   constructor(private readonly storage: StorageDriver) {}
 
+  async getById(id: ID): Promise<LedgerEntry | null> {
+    return this.readEntries().find((entry) => entry.id === id) ?? null;
+  }
+
   async listByControlCenter(controlCenterId: ID): Promise<LedgerEntry[]> {
     return this.readEntries().filter((entry) => entry.controlCenterId === controlCenterId);
   }

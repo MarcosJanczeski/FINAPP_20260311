@@ -18,24 +18,60 @@ export class SyncPlanningEventsUseCase {
     const sourceItems = (
       await Promise.all(this.sourceProviders.map((provider) => provider.list(input.controlCenterId)))
     ).flat();
+    const uniqueSourceItems = Array.from(
+      new Map(sourceItems.map((item) => [item.sourceEventKey, item])).values(),
+    );
 
     const now = new Date().toISOString();
-    const existingAutoByKey = new Map(
-      existing
-        .filter((event) => event.sourceType !== 'manual' && event.sourceEventKey)
-        .map((event) => [event.sourceEventKey as string, event]),
+    const existingAutoEvents = existing.filter(
+      (event) => event.sourceType !== 'manual' && event.sourceEventKey,
     );
+    const groupedExistingByKey = new Map<string, PlanningEvent[]>();
+    for (const event of existingAutoEvents) {
+      const key = event.sourceEventKey as string;
+      const current = groupedExistingByKey.get(key) ?? [];
+      current.push(event);
+      groupedExistingByKey.set(key, current);
+    }
+    const existingAutoByKey = new Map<string, PlanningEvent>();
+
+    for (const [key, grouped] of groupedExistingByKey) {
+      const sorted = [...grouped].sort((a, b) => {
+        const rankA = a.status === 'active' ? 0 : 1;
+        const rankB = b.status === 'active' ? 0 : 1;
+        if (rankA !== rankB) {
+          return rankA - rankB;
+        }
+        return a.updatedAt > b.updatedAt ? -1 : 1;
+      });
+      const keeper = sorted[0];
+      existingAutoByKey.set(key, keeper);
+
+      const duplicates = sorted.slice(1).filter((event) => event.status !== 'canceled');
+      for (const duplicate of duplicates) {
+        await this.planningEventRepository.save({
+          ...duplicate,
+          status: 'canceled',
+          updatedAt: now,
+        });
+      }
+    }
+
     const seenKeys = new Set<string>();
 
-    for (const sourceItem of sourceItems) {
+    for (const sourceItem of uniqueSourceItems) {
       seenKeys.add(sourceItem.sourceEventKey);
       const current = existingAutoByKey.get(sourceItem.sourceEventKey);
-      const preserved = current && current.status !== 'active' ? current : null;
+      const preserved = current && current.status === 'confirmed' ? current : null;
 
       const next: PlanningEvent = {
         id: current?.id ?? crypto.randomUUID(),
         controlCenterId: input.controlCenterId,
-        date: preserved?.date ?? sourceItem.date,
+        date: preserved?.date ?? sourceItem.dueDate,
+        documentDate: preserved?.documentDate ?? sourceItem.documentDate,
+        dueDate: preserved?.dueDate ?? sourceItem.dueDate,
+        plannedSettlementDate:
+          preserved?.plannedSettlementDate ?? sourceItem.plannedSettlementDate,
         description: preserved?.description ?? sourceItem.description,
         type: preserved?.type ?? sourceItem.type,
         status: preserved?.status ?? sourceItem.status,

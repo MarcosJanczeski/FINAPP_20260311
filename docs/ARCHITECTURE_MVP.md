@@ -552,6 +552,7 @@ Estados/transições mínimas de `PlanningEvent`:
 * realização deve gerar baixa/liquidação contábil correspondente
 * cancelamento permitido em `previsto` e `confirmado`
 * reversão de confirmação deve ocorrer por estorno/compensação, sem apagar histórico
+* na reversão de confirmação, o estorno deve usar a mesma data contábil (`date`) do lançamento original; `createdAt` registra a data/hora real da execução e `reversalOf` referencia o lançamento original
 * `posted` pode existir como detalhe técnico interno, sem substituir estados de negócio
 
 Componentes técnicos mínimos (etapa atual):
@@ -561,6 +562,10 @@ Componentes técnicos mínimos (etapa atual):
 * confirmação de recorrência já gera `LedgerEntry` de reconhecimento com referência auditável
 * providers de origem (recorrência/margem) desacoplados via contrato
 * provider real de recorrência mensal ativo; provider de margem permanece em `noop` nesta etapa
+* neste MVP, na confirmação de recorrência a UI edita apenas `documentDate` e `dueDate`; `plannedSettlementDate` é preenchida automaticamente com `dueDate` e o ajuste manual dessa data ficará para fluxo futuro
+* validações mínimas na confirmação: `documentDate` não pode ser futura e `dueDate` não pode ser anterior a `documentDate`
+* sincronização deve ser idempotente por `sourceEventKey`, deduplicando chaves repetidas e saneando duplicatas legadas por cancelamento técnico
+* listagem padrão da projeção pode ocultar eventos `canceled` para reduzir ruído operacional, mantendo rastreabilidade em persistência
 * conversões de data na projeção devem usar formato estável (`YYYY-MM-DD` + horário neutro) para evitar deslocamento de um dia por fuso horário
 
 ---

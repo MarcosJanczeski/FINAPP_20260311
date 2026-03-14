@@ -10,7 +10,9 @@ import type { ID, ISODateString } from '../../domain/types/common';
 interface UpsertPlanningEventInput {
   id?: ID;
   controlCenterId: ID;
-  date: ISODateString;
+  documentDate?: ISODateString;
+  dueDate: ISODateString;
+  plannedSettlementDate?: ISODateString;
   description: string;
   type: PlanningEventType;
   status?: PlanningEventStatus;
@@ -35,7 +37,11 @@ export class UpsertPlanningEventUseCase {
     const event: PlanningEvent = {
       id: existing?.id ?? crypto.randomUUID(),
       controlCenterId: input.controlCenterId,
-      date: input.date,
+      date: input.dueDate,
+      documentDate: input.documentDate ?? existing?.documentDate ?? input.dueDate,
+      dueDate: input.dueDate,
+      plannedSettlementDate:
+        input.plannedSettlementDate ?? existing?.plannedSettlementDate ?? input.dueDate,
       description: input.description.trim(),
       type: input.type,
       status: input.status ?? existing?.status ?? 'active',
