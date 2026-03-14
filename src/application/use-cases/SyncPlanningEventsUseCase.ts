@@ -30,16 +30,17 @@ export class SyncPlanningEventsUseCase {
     for (const sourceItem of sourceItems) {
       seenKeys.add(sourceItem.sourceEventKey);
       const current = existingAutoByKey.get(sourceItem.sourceEventKey);
+      const preserved = current && current.status !== 'active' ? current : null;
 
       const next: PlanningEvent = {
         id: current?.id ?? crypto.randomUUID(),
         controlCenterId: input.controlCenterId,
-        date: sourceItem.date,
-        description: sourceItem.description,
-        type: sourceItem.type,
-        status: current?.status === 'posted' ? 'posted' : sourceItem.status,
-        direction: sourceItem.direction,
-        amountCents: sourceItem.amountCents,
+        date: preserved?.date ?? sourceItem.date,
+        description: preserved?.description ?? sourceItem.description,
+        type: preserved?.type ?? sourceItem.type,
+        status: preserved?.status ?? sourceItem.status,
+        direction: preserved?.direction ?? sourceItem.direction,
+        amountCents: preserved?.amountCents ?? sourceItem.amountCents,
         sourceType: sourceItem.sourceType,
         sourceId: sourceItem.sourceId,
         sourceEventKey: sourceItem.sourceEventKey,

@@ -19,10 +19,13 @@ import { ConfirmPlanningEventUseCase } from '../application/use-cases/ConfirmPla
 import { CancelPlanningEventUseCase } from '../application/use-cases/CancelPlanningEventUseCase';
 import { PostPlanningEventUseCase } from '../application/use-cases/PostPlanningEventUseCase';
 import { SyncPlanningEventsUseCase } from '../application/use-cases/SyncPlanningEventsUseCase';
+import { ListRecurrencesUseCase } from '../application/use-cases/ListRecurrencesUseCase';
+import { UpsertRecurrenceUseCase } from '../application/use-cases/UpsertRecurrenceUseCase';
+import { ConfirmRecurrencePlanningEventUseCase } from '../application/use-cases/ConfirmRecurrencePlanningEventUseCase';
 import {
   NoopBudgetMarginPlanningEventSourceProvider,
-  NoopRecurrencePlanningEventSourceProvider,
 } from '../application/services/NoopPlanningEventSourceProviders';
+import { RecurrencePlanningEventSourceProvider } from '../application/services/RecurrencePlanningEventSourceProvider';
 
 export interface AppContainer {
   repositories: ReturnType<typeof createLocalStorageRepositories>;
@@ -46,6 +49,9 @@ export interface AppContainer {
     cancelPlanningEvent: CancelPlanningEventUseCase;
     postPlanningEvent: PostPlanningEventUseCase;
     syncPlanningEvents: SyncPlanningEventsUseCase;
+    listRecurrences: ListRecurrencesUseCase;
+    upsertRecurrence: UpsertRecurrenceUseCase;
+    confirmRecurrencePlanningEvent: ConfirmRecurrencePlanningEventUseCase;
   };
 }
 
@@ -53,7 +59,7 @@ export function createAppContainer(): AppContainer {
   const storage = createLocalStorageDriver();
   const repositories = createLocalStorageRepositories(storage);
   const planningSources = [
-    new NoopRecurrencePlanningEventSourceProvider(),
+    new RecurrencePlanningEventSourceProvider(repositories.recurrenceRepository),
     new NoopBudgetMarginPlanningEventSourceProvider(),
   ];
   const useCases = {
@@ -100,6 +106,11 @@ export function createAppContainer(): AppContainer {
     syncPlanningEvents: new SyncPlanningEventsUseCase(
       repositories.planningEventRepository,
       planningSources,
+    ),
+    listRecurrences: new ListRecurrencesUseCase(repositories.recurrenceRepository),
+    upsertRecurrence: new UpsertRecurrenceUseCase(repositories.recurrenceRepository),
+    confirmRecurrencePlanningEvent: new ConfirmRecurrencePlanningEventUseCase(
+      repositories.planningEventRepository,
     ),
   };
 

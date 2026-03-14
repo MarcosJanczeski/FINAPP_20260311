@@ -536,7 +536,8 @@ Componentes técnicos mínimos (etapa atual):
 
 * `SyncPlanningEventsUseCase` para consolidar eventos automáticos de projeção
 * providers de origem (recorrência/margem) desacoplados via contrato
-* providers em modo `noop` nesta etapa, permitindo evoluir fontes reais sem alterar o fluxo principal
+* provider real de recorrência mensal ativo; provider de margem permanece em `noop` nesta etapa
+* conversões de data na projeção devem usar formato estável (`YYYY-MM-DD` + horário neutro) para evitar deslocamento de um dia por fuso horário
 
 ---
 

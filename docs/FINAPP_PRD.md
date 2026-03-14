@@ -476,6 +476,12 @@ frequência
 data inicial
 ```
 
+Status de implementação (MVP atual):
+
+* periodicidade inicial suportada: `monthly`
+* ao salvar/editar recorrência mensal ativa, a projeção gera eventos para mês atual + 3 meses
+* na projeção, `previsto_recorrencia` pode ser confirmado com ajuste de data/valor e passa para `confirmado_agendado` (`confirmed`), sem `LedgerEntry` nesta etapa
+
 ---
 
 # 11. Tela de Projeção
@@ -786,7 +792,8 @@ Transições mínimas:
 Status técnico atual da projeção (MVP):
 
 * `/projection` já lê `PlanningEvent` e permite disparar sincronização manual
-* geração automática real por recorrência/margem ainda está em stub (providers noop), preparada para evolução
+* geração automática real por recorrência mensal já está ativa
+* geração por margem orçamentária permanece em stub (provider `noop`) nesta etapa
 
 ---
 
