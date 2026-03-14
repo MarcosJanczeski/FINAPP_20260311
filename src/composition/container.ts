@@ -22,6 +22,7 @@ import { SyncPlanningEventsUseCase } from '../application/use-cases/SyncPlanning
 import { ListRecurrencesUseCase } from '../application/use-cases/ListRecurrencesUseCase';
 import { UpsertRecurrenceUseCase } from '../application/use-cases/UpsertRecurrenceUseCase';
 import { ConfirmRecurrencePlanningEventUseCase } from '../application/use-cases/ConfirmRecurrencePlanningEventUseCase';
+import { GetProjectionAvailabilitySummaryUseCase } from '../application/use-cases/GetProjectionAvailabilitySummaryUseCase';
 import {
   NoopBudgetMarginPlanningEventSourceProvider,
 } from '../application/services/NoopPlanningEventSourceProviders';
@@ -52,6 +53,7 @@ export interface AppContainer {
     listRecurrences: ListRecurrencesUseCase;
     upsertRecurrence: UpsertRecurrenceUseCase;
     confirmRecurrencePlanningEvent: ConfirmRecurrencePlanningEventUseCase;
+    getProjectionAvailabilitySummary: GetProjectionAvailabilitySummaryUseCase;
   };
 }
 
@@ -110,6 +112,10 @@ export function createAppContainer(): AppContainer {
     listRecurrences: new ListRecurrencesUseCase(repositories.recurrenceRepository),
     upsertRecurrence: new UpsertRecurrenceUseCase(repositories.recurrenceRepository),
     confirmRecurrencePlanningEvent: new ConfirmRecurrencePlanningEventUseCase(
+      repositories.planningEventRepository,
+    ),
+    getProjectionAvailabilitySummary: new GetProjectionAvailabilitySummaryUseCase(
+      repositories.accountRepository,
       repositories.planningEventRepository,
     ),
   };

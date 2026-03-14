@@ -481,6 +481,7 @@ Status de implementação (MVP atual):
 * periodicidade inicial suportada: `monthly`
 * ao salvar/editar recorrência mensal ativa, a projeção gera eventos para mês atual + 3 meses
 * na projeção, `previsto_recorrencia` pode ser confirmado com ajuste de data/valor e passa para `confirmado_agendado` (`confirmed`), sem `LedgerEntry` nesta etapa
+* a projeção já exibe resumo de saldo de disponibilidades: saldo base atual, entradas projetadas, saídas projetadas e saldo projetado final (janela mês atual + 3 meses)
 
 ---
 
@@ -806,6 +807,7 @@ Status técnico atual da projeção (MVP):
 * `/projection` já lê `PlanningEvent` e permite disparar sincronização manual
 * geração automática real por recorrência mensal já está ativa
 * geração por margem orçamentária permanece em stub (provider `noop`) nesta etapa
+* cálculo de resumo de disponibilidades é executado na camada de aplicação e não altera saldo real persistido
 
 ---
 

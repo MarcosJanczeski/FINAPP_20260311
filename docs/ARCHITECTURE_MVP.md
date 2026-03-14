@@ -554,6 +554,7 @@ Estados/transições mínimas de `PlanningEvent`:
 Componentes técnicos mínimos (etapa atual):
 
 * `SyncPlanningEventsUseCase` para consolidar eventos automáticos de projeção
+* `GetProjectionAvailabilitySummaryUseCase` para consolidar resumo de saldo projetado de disponibilidades
 * providers de origem (recorrência/margem) desacoplados via contrato
 * provider real de recorrência mensal ativo; provider de margem permanece em `noop` nesta etapa
 * conversões de data na projeção devem usar formato estável (`YYYY-MM-DD` + horário neutro) para evitar deslocamento de um dia por fuso horário

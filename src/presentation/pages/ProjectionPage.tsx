@@ -13,6 +13,16 @@ import {
   isoDateToInputValue,
 } from '../../shared/utils/date';
 
+interface ProjectionAvailabilitySummaryView {
+  windowStart: string;
+  windowEnd: string;
+  baseBalanceCents: number;
+  projectedInflowsCents: number;
+  projectedOutflowsCents: number;
+  projectedFinalBalanceCents: number;
+  consideredEventsCount: number;
+}
+
 export function ProjectionPage() {
   const { session } = useAuth();
   const container = useAppContainer();
@@ -25,6 +35,8 @@ export function ProjectionPage() {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [confirmedDate, setConfirmedDate] = useState('');
   const [confirmedAmountCents, setConfirmedAmountCents] = useState(0);
+  const [availabilitySummary, setAvailabilitySummary] =
+    useState<ProjectionAvailabilitySummaryView | null>(null);
 
   const refresh = async () => {
     if (!session) {
@@ -34,8 +46,12 @@ export function ProjectionPage() {
     const setup = await container.useCases.getAccountsSetup.execute(session.userId);
     setControlCenterId(setup.controlCenterId);
     await container.useCases.syncPlanningEvents.execute({ controlCenterId: setup.controlCenterId });
-    const data = await container.useCases.listPlanningEvents.execute(setup.controlCenterId);
+    const [data, summary] = await Promise.all([
+      container.useCases.listPlanningEvents.execute(setup.controlCenterId),
+      container.useCases.getProjectionAvailabilitySummary.execute(setup.controlCenterId),
+    ]);
     setEvents(data);
+    setAvailabilitySummary(summary);
   };
 
   const selectedEvent = useMemo(
@@ -132,6 +148,30 @@ export function ProjectionPage() {
 
       {success ? <p>{success}</p> : null}
       {error ? <p>{error}</p> : null}
+
+      {availabilitySummary ? (
+        <section style={{ marginTop: '1rem' }}>
+          <h2>Resumo de saldo projetado de disponibilidades</h2>
+          <p>
+            Janela: {formatDatePtBrFromIso(availabilitySummary.windowStart)} ate{' '}
+            {formatDatePtBrFromIso(availabilitySummary.windowEnd)}
+          </p>
+          <ul>
+            <li>Saldo base atual: {formatCurrencyFromCents(availabilitySummary.baseBalanceCents)}</li>
+            <li>
+              Entradas projetadas: {formatCurrencyFromCents(availabilitySummary.projectedInflowsCents)}
+            </li>
+            <li>
+              Saidas projetadas: {formatCurrencyFromCents(availabilitySummary.projectedOutflowsCents)}
+            </li>
+            <li>
+              Saldo projetado final:{' '}
+              {formatCurrencyFromCents(availabilitySummary.projectedFinalBalanceCents)}
+            </li>
+            <li>Eventos considerados: {availabilitySummary.consideredEventsCount}</li>
+          </ul>
+        </section>
+      ) : null}
 
       <section style={{ marginTop: '1rem' }}>
         <h2>Eventos de projecao (PlanningEvent)</h2>
