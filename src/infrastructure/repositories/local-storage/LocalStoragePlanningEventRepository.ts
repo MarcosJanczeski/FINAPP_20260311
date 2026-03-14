@@ -36,6 +36,7 @@ export class LocalStoragePlanningEventRepository implements PlanningEventReposit
     return events.map((event) => ({
       ...event,
       sourceId: event.sourceId ?? null,
+      sourceEventKey: event.sourceEventKey ?? null,
       postedLedgerEntryId: event.postedLedgerEntryId ?? null,
       updatedAt: event.updatedAt ?? event.createdAt,
       status: event.status ?? 'active',

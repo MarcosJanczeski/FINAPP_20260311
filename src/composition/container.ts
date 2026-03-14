@@ -18,6 +18,11 @@ import { UpsertPlanningEventUseCase } from '../application/use-cases/UpsertPlann
 import { ConfirmPlanningEventUseCase } from '../application/use-cases/ConfirmPlanningEventUseCase';
 import { CancelPlanningEventUseCase } from '../application/use-cases/CancelPlanningEventUseCase';
 import { PostPlanningEventUseCase } from '../application/use-cases/PostPlanningEventUseCase';
+import { SyncPlanningEventsUseCase } from '../application/use-cases/SyncPlanningEventsUseCase';
+import {
+  NoopBudgetMarginPlanningEventSourceProvider,
+  NoopRecurrencePlanningEventSourceProvider,
+} from '../application/services/NoopPlanningEventSourceProviders';
 
 export interface AppContainer {
   repositories: ReturnType<typeof createLocalStorageRepositories>;
@@ -40,12 +45,17 @@ export interface AppContainer {
     confirmPlanningEvent: ConfirmPlanningEventUseCase;
     cancelPlanningEvent: CancelPlanningEventUseCase;
     postPlanningEvent: PostPlanningEventUseCase;
+    syncPlanningEvents: SyncPlanningEventsUseCase;
   };
 }
 
 export function createAppContainer(): AppContainer {
   const storage = createLocalStorageDriver();
   const repositories = createLocalStorageRepositories(storage);
+  const planningSources = [
+    new NoopRecurrencePlanningEventSourceProvider(),
+    new NoopBudgetMarginPlanningEventSourceProvider(),
+  ];
   const useCases = {
     getCurrentSession: new GetCurrentSessionUseCase(repositories.authRepository),
     signUp: new SignUpUseCase(repositories.userRepository, repositories.authRepository),
@@ -87,6 +97,10 @@ export function createAppContainer(): AppContainer {
     confirmPlanningEvent: new ConfirmPlanningEventUseCase(repositories.planningEventRepository),
     cancelPlanningEvent: new CancelPlanningEventUseCase(repositories.planningEventRepository),
     postPlanningEvent: new PostPlanningEventUseCase(repositories.planningEventRepository),
+    syncPlanningEvents: new SyncPlanningEventsUseCase(
+      repositories.planningEventRepository,
+      planningSources,
+    ),
   };
 
   return {

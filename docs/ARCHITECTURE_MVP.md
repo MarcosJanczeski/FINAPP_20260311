@@ -523,6 +523,7 @@ Separação arquitetural obrigatória:
 * `PlanningEvent` para projeção/planejamento (camada operacional de cenário)
 * `LedgerEntry` para escrituração oficial (camada contábil)
 * `PlanningEvent` nunca substitui `LedgerEntry`; postagem contábil ocorre por transição controlada
+* sincronização de `PlanningEvent` deve ser idempotente por `sourceEventKey`
 
 Estados/transições mínimas de `PlanningEvent`:
 
@@ -530,6 +531,12 @@ Estados/transições mínimas de `PlanningEvent`:
 * fluxo base: `previsto -> confirmado -> postado`
 * cancelamento permitido em `previsto` e `confirmado`
 * cancelamento bloqueado em `postado`
+
+Componentes técnicos mínimos (etapa atual):
+
+* `SyncPlanningEventsUseCase` para consolidar eventos automáticos de projeção
+* providers de origem (recorrência/margem) desacoplados via contrato
+* providers em modo `noop` nesta etapa, permitindo evoluir fontes reais sem alterar o fluxo principal
 
 ---
 

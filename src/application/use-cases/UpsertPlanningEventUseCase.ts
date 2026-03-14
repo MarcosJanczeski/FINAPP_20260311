@@ -18,6 +18,7 @@ interface UpsertPlanningEventInput {
   amountCents: number;
   sourceType: PlanningEvent['sourceType'];
   sourceId?: ID | null;
+  sourceEventKey?: string | null;
 }
 
 export class UpsertPlanningEventUseCase {
@@ -42,6 +43,7 @@ export class UpsertPlanningEventUseCase {
       amountCents: input.amountCents,
       sourceType: input.sourceType,
       sourceId: input.sourceId ?? null,
+      sourceEventKey: input.sourceEventKey ?? existing?.sourceEventKey ?? null,
       postedLedgerEntryId: existing?.postedLedgerEntryId ?? null,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,

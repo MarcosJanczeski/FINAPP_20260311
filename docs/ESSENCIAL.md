@@ -29,6 +29,7 @@ Olha só, vou te passar o que tenho em mente:
 - na sequência, no primeiro tour o usuário é convidado/encaminhado à tela de planejamento onde ele poderá ver o mesmo gráfico dos saldos dos meses apresentado na projeção, um bloco para configurar o saldo mínimo de alerta, meta de superávit mensal. Abaixo uma tabela/lista de cards constando categoria(receitas/despesas) | orçamento (editável) | realizado + compromissos + previsões | margem. Inicialmente "realizado + compromissos + previsões" aparecem agrupados em "comprometido" que pode ser expandido mostrando o detalhamento.
 - status atual de desenvolvimento: as etapas pós-contas (`cartões`, `recorrências`, `projeção` e `planejamento`) estão disponíveis como placeholders navegáveis para validação da jornada.
 - para evitar contaminação da contabilidade oficial, projeção/planejamento deve usar eventos próprios (`PlanningEvent`) separados do razão contábil.
+- a sincronização de `PlanningEvent` deve ser idempotente por chave de origem (`sourceEventKey`) para evitar duplicidade em reprocessamentos.
 - relatórios contábeis oficiais (balanço, dre e derivados) devem usar somente `LedgerEntry` postado/confirmado, nunca previsões.
 - eventos de planejamento/projeção devem suportar ao menos os tipos: `realizado`, `confirmado_agendado`, `previsto_recorrencia`, `previsto_margem`.
 - transições mínimas: `previsto -> confirmado_agendado -> postado`; `previsto -> cancelado`; `confirmado_agendado -> cancelado` (bloqueado se já `postado`).

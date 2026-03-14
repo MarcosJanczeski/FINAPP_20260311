@@ -773,6 +773,8 @@ Estados e tipos mínimos em `PlanningEvent`:
 
 * tipos: `realizado`, `confirmado_agendado`, `previsto_recorrencia`, `previsto_margem`
 * status: `active`, `confirmed`, `canceled`, `posted`
+* campos mínimos de origem: `sourceType`, `sourceId`, `sourceEventKey`
+* `sourceEventKey` deve garantir idempotência de sincronização (reprocessar sem duplicar evento)
 * vínculo de auditoria com contabilidade: `postedLedgerEntryId` quando houver postagem
 
 Transições mínimas:
@@ -780,6 +782,11 @@ Transições mínimas:
 * `previsto` -> `confirmado_agendado` -> `postado`
 * `previsto` -> `cancelado`
 * `confirmado_agendado` -> `cancelado` (não permitido se já estiver `postado`)
+
+Status técnico atual da projeção (MVP):
+
+* `/projection` já lê `PlanningEvent` e permite disparar sincronização manual
+* geração automática real por recorrência/margem ainda está em stub (providers noop), preparada para evolução
 
 ---
 

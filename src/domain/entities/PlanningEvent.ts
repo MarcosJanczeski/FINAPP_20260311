@@ -21,6 +21,7 @@ export interface PlanningEvent {
   amountCents: number;
   sourceType: 'manual' | 'recurrence' | 'budget_margin' | 'payable' | 'receivable' | 'import';
   sourceId: ID | null;
+  sourceEventKey: string | null;
   postedLedgerEntryId: ID | null;
   createdAt: ISODateString;
   updatedAt: ISODateString;
