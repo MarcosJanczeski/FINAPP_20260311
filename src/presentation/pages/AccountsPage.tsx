@@ -184,6 +184,39 @@ export function AccountsPage() {
     };
   }, [container, controlCenterId, selectedAccountId]);
 
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const focusFormById = (inputId: string, sectionId: string) => {
+    const section = document.getElementById(sectionId);
+    section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.setTimeout(() => {
+      const input = document.getElementById(inputId) as HTMLInputElement | null;
+      if (!input) {
+        return;
+      }
+      input.focus();
+      input.select();
+    }, 120);
+  };
+
+  useEffect(() => {
+    if (activeForm === 'create') {
+      focusFormById('account-name', 'accounts-form-create');
+      return;
+    }
+
+    if (activeForm === 'edit') {
+      focusFormById('edit-name', 'accounts-form-edit');
+      return;
+    }
+
+    if (activeForm === 'adjust') {
+      focusFormById('adjust-opening-balance', 'accounts-form-adjust');
+    }
+  }, [activeForm]);
+
   const startCreate = () => {
     clearMessages();
     setName('');
@@ -213,8 +246,11 @@ export function AccountsPage() {
     setActiveForm('adjust');
   };
 
-  const closeForm = () => {
+  const closeForm = (scrollOnClose = false) => {
     setActiveForm('none');
+    if (scrollOnClose) {
+      scrollToTop();
+    }
   };
 
   const handleCreateAccount = async (event: FormEvent<HTMLFormElement>) => {
@@ -511,7 +547,7 @@ export function AccountsPage() {
       </section>
 
       {activeForm === 'create' ? (
-        <section style={{ marginTop: '1rem' }}>
+        <section id="accounts-form-create" style={{ marginTop: '1rem' }}>
           <h2>Nova conta</h2>
           <form onSubmit={handleCreateAccount} style={{ display: 'grid', gap: '0.5rem', maxWidth: 380 }}>
             <label htmlFor="account-name">Nome da conta</label>
@@ -584,7 +620,7 @@ export function AccountsPage() {
               <button type="submit" disabled={isSaving || (!ledgerAccountId && !isAvailabilityCreateFlow)}>
                 {isSaving ? 'Salvando...' : 'Salvar conta'}
               </button>
-              <button type="button" onClick={closeForm} disabled={isSaving}>
+              <button type="button" onClick={() => closeForm(true)} disabled={isSaving}>
                 Cancelar
               </button>
             </div>
@@ -593,7 +629,7 @@ export function AccountsPage() {
       ) : null}
 
       {activeForm === 'edit' && selectedAccount ? (
-        <section style={{ marginTop: '1rem' }}>
+        <section id="accounts-form-edit" style={{ marginTop: '1rem' }}>
           <h2>Editar conta</h2>
           <p>Conta selecionada: {selectedAccount.name}</p>
           <form onSubmit={handleUpdateProfile} style={{ display: 'grid', gap: '0.5rem', maxWidth: 380 }}>
@@ -623,7 +659,7 @@ export function AccountsPage() {
               <button type="submit" disabled={isSaving}>
                 Salvar alteracoes
               </button>
-              <button type="button" onClick={closeForm} disabled={isSaving}>
+              <button type="button" onClick={() => closeForm(true)} disabled={isSaving}>
                 Cancelar
               </button>
             </div>
@@ -632,7 +668,7 @@ export function AccountsPage() {
       ) : null}
 
       {activeForm === 'adjust' && selectedAccount ? (
-        <section style={{ marginTop: '1rem' }}>
+        <section id="accounts-form-adjust" style={{ marginTop: '1rem' }}>
           <h2>Ajustar saldo inicial</h2>
           <p>
             Conta selecionada: {selectedAccount.name}. O app registra o ajuste contabil automaticamente
@@ -662,7 +698,7 @@ export function AccountsPage() {
               <button type="submit" disabled={isSaving}>
                 Salvar ajuste
               </button>
-              <button type="button" onClick={closeForm} disabled={isSaving}>
+              <button type="button" onClick={() => closeForm(true)} disabled={isSaving}>
                 Cancelar
               </button>
             </div>
