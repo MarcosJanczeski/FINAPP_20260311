@@ -109,6 +109,44 @@ export function ProjectionPage() {
     return 'planejamento';
   };
 
+  const getVisualTone = (event: PlanningEvent): {
+    border: string;
+    background: string;
+    stateColor: string;
+    valueWeight: 600 | 700;
+    valueColor: string;
+  } => {
+    const state = functionalStateLabel(event);
+
+    if (state === 'confirmado') {
+      return {
+        border: '1px solid #dca95a',
+        background: '#fff7eb',
+        stateColor: '#8b5e1a',
+        valueWeight: 700,
+        valueColor: '#8b5e1a',
+      };
+    }
+
+    if (state === 'realizado') {
+      return {
+        border: '1px solid #b9d9c0',
+        background: '#f3fbf5',
+        stateColor: '#2f6d3e',
+        valueWeight: 600,
+        valueColor: '#2f6d3e',
+      };
+    }
+
+    return {
+      border: '1px solid #d7d7d7',
+      background: '#ffffff',
+      stateColor: '#5f5f5f',
+      valueWeight: 600,
+      valueColor: '#2b2b2b',
+    };
+  };
+
   useEffect(() => {
     if (!session) {
       return;
@@ -371,51 +409,57 @@ export function ProjectionPage() {
 
         {visibleEvents.length > 0 ? (
           <ul style={{ display: 'grid', gap: '0.75rem', listStyle: 'none', padding: 0 }}>
-            {visibleEvents.map((event) => (
-              <li
-                key={event.id}
-                style={{
-                  border: '1px solid #d7d7d7',
-                  borderRadius: 8,
-                  padding: '0.75rem',
-                  display: 'grid',
-                  gap: '0.35rem',
-                }}
-              >
-                <strong>{formatDatePtBrFromIso(event.dueDate)}</strong>
-                <span style={{ textTransform: 'capitalize' }}>
-                  {functionalStateLabel(event)} • {sourceLabel(event)}
-                </span>
-                <span>{event.description}</span>
-                <strong>{formatCurrencyFromCents(event.amountCents)}</strong>
+            {visibleEvents.map((event) => {
+              const tone = getVisualTone(event);
+              return (
+                <li
+                  key={event.id}
+                  style={{
+                    border: tone.border,
+                    background: tone.background,
+                    borderRadius: 8,
+                    padding: '0.75rem',
+                    display: 'grid',
+                    gap: '0.35rem',
+                  }}
+                >
+                  <strong style={{ fontSize: '0.95rem' }}>{formatDatePtBrFromIso(event.dueDate)}</strong>
+                  <span style={{ textTransform: 'capitalize', color: tone.stateColor, fontWeight: 600 }}>
+                    {functionalStateLabel(event)} • {sourceLabel(event)}
+                  </span>
+                  <span style={{ color: '#222' }}>{event.description}</span>
+                  <strong style={{ fontWeight: tone.valueWeight, color: tone.valueColor }}>
+                    {formatCurrencyFromCents(event.amountCents)}
+                  </strong>
 
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  {event.type === 'previsto_recorrencia' && event.status === 'active' ? (
-                    <button type="button" onClick={() => startConfirm(event)}>
-                      Confirmar recorrencia
-                    </button>
-                  ) : null}
-                  {event.type === 'confirmado_agendado' && event.status === 'confirmed' ? (
-                    <button
-                      type="button"
-                      onClick={() => startSettlement(event)}
-                      disabled={isSaving}
-                    >
-                      {event.direction === 'outflow' ? 'Marcar como pago' : 'Marcar como recebido'}
-                    </button>
-                  ) : null}
-                  {event.type === 'confirmado_agendado' && event.status === 'confirmed' ? (
-                    <button
-                      type="button"
-                      onClick={() => void handleReverseConfirmation(event)}
-                      disabled={isSaving}
-                    >
-                      Reverter confirmacao
-                    </button>
-                  ) : null}
-                </div>
-              </li>
-            ))}
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.2rem' }}>
+                    {event.type === 'previsto_recorrencia' && event.status === 'active' ? (
+                      <button type="button" onClick={() => startConfirm(event)}>
+                        Confirmar recorrencia
+                      </button>
+                    ) : null}
+                    {event.type === 'confirmado_agendado' && event.status === 'confirmed' ? (
+                      <button
+                        type="button"
+                        onClick={() => startSettlement(event)}
+                        disabled={isSaving}
+                      >
+                        {event.direction === 'outflow' ? 'Marcar como pago' : 'Marcar como recebido'}
+                      </button>
+                    ) : null}
+                    {event.type === 'confirmado_agendado' && event.status === 'confirmed' ? (
+                      <button
+                        type="button"
+                        onClick={() => void handleReverseConfirmation(event)}
+                        disabled={isSaving}
+                      >
+                        Reverter confirmacao
+                      </button>
+                    ) : null}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         ) : null}
       </section>
