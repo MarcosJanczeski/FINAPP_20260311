@@ -314,6 +314,28 @@ No MVP atual, a presentation inclui página dedicada para razão contábil (`/le
 * filtros básicos por tipo e texto
 * ação de lançamento avançado preparada como botão/CTA (sem formulário fixo), abrindo painel sob demanda com fechamento pelo usuário nesta etapa
 
+### Padrão de composição para listagens operacionais (mobile-first)
+
+Telas da camada de presentation que combinam listagem de entidades com ações operacionais devem seguir padrão de composição visual reutilizável.
+
+Estrutura padrão:
+
+a. cabeçalho com contexto da tela e CTA primário de criação
+b. lista principal em cards
+c. cada card deve conter:
+   - identificação principal do item
+   - metadados essenciais
+   - status visual
+   - CTAs contextuais do item
+d. blocos técnicos ou complementares (ex.: extrato detalhado, lançamentos relacionados, detalhes contábeis) não devem competir visualmente com a listagem principal e devem aparecer em área separada
+e. componentes de card e CTA devem ser reutilizáveis entre módulos para manter consistência
+
+Objetivos do padrão:
+
+* reduzir ruído visual
+* melhorar escaneabilidade em telas pequenas
+* manter previsibilidade entre módulos
+
 ---
 
 # Repositórios

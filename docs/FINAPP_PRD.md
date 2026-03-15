@@ -251,6 +251,30 @@ Status atual de implementação (MVP em desenvolvimento):
   * `/planning`
 * objetivo atual: validar jornada e transições antes da implementação funcional completa de cada módulo
 
+### Padrão de Telas Operacionais (mobile-first)
+
+Telas operacionais com listagem de itens e ações contextuais devem seguir padrão visual e funcional consistente, com prioridade para uso em telas pequenas.
+
+Estrutura obrigatória:
+
+1. bloco superior com contexto da tela e CTA primário de criação/adicionar item
+2. listagem principal em cards
+3. cada card deve exibir somente informações essenciais para decisão rápida
+4. ações do item devem aparecer como CTAs contextuais no próprio card
+5. evitar poluição visual com excesso de botões e blocos técnicos misturados à listagem principal
+6. informações técnicas ou secundárias devem ficar em área separada, expansível ou em tela/bloco próprio
+
+Diretriz de referência:
+
+* a tela de projeção serve como referência inicial de clareza visual, sem impedir evolução posterior do padrão
+
+Aplicação inicial no MVP:
+
+* contas
+* recorrências
+* cartões
+* compromissos
+
 ---
 
 # 5. Criação de Conta
