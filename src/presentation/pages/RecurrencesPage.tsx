@@ -201,6 +201,43 @@ export function RecurrencesPage() {
     setIsFormVisible(true);
   };
 
+  const handleToggleStatus = async (recurrence: Recurrence) => {
+    if (!controlCenterId) {
+      setError('Centro de controle nao identificado.');
+      return;
+    }
+
+    setError(null);
+    setSuccess(null);
+    setIsSaving(true);
+
+    try {
+      await container.useCases.upsertRecurrence.execute({
+        id: recurrence.id,
+        controlCenterId,
+        description: recurrence.description,
+        dayOfMonth: recurrence.dayOfMonth,
+        direction: recurrence.direction,
+        amountCents: recurrence.amountCents,
+        status: recurrence.status === 'active' ? 'inactive' : 'active',
+      });
+
+      await container.useCases.syncPlanningEvents.execute({ controlCenterId });
+      await loadData();
+      setSuccess(
+        recurrence.status === 'active'
+          ? 'Recorrencia desativada com sucesso.'
+          : 'Recorrencia ativada com sucesso.',
+      );
+    } catch (currentError) {
+      setError(
+        currentError instanceof Error ? currentError.message : 'Falha ao atualizar status da recorrencia.',
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!controlCenterId) {
@@ -333,13 +370,23 @@ export function RecurrencesPage() {
                       <strong style={{ color: getDirectionalValueColor(recurrence) }}>
                         {formatDirectionalValue(recurrence)}
                       </strong>
-                      <button
-                        type="button"
-                        style={{ width: 'fit-content' }}
-                        onClick={() => startEdit(recurrence)}
-                      >
-                        Editar
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          style={{ width: 'fit-content' }}
+                          onClick={() => startEdit(recurrence)}
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          style={{ width: 'fit-content' }}
+                          onClick={() => void handleToggleStatus(recurrence)}
+                          disabled={isSaving}
+                        >
+                          {recurrence.status === 'active' ? 'Desativar' : 'Ativar'}
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -378,13 +425,23 @@ export function RecurrencesPage() {
                       <strong style={{ color: getDirectionalValueColor(recurrence) }}>
                         {formatDirectionalValue(recurrence)}
                       </strong>
-                      <button
-                        type="button"
-                        style={{ width: 'fit-content' }}
-                        onClick={() => startEdit(recurrence)}
-                      >
-                        Editar
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          style={{ width: 'fit-content' }}
+                          onClick={() => startEdit(recurrence)}
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          style={{ width: 'fit-content' }}
+                          onClick={() => void handleToggleStatus(recurrence)}
+                          disabled={isSaving}
+                        >
+                          {recurrence.status === 'active' ? 'Desativar' : 'Ativar'}
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>
