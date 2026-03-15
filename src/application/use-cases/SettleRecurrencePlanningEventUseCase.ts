@@ -1,4 +1,5 @@
 import type { AccountRepository } from '../../domain/repositories/AccountRepository';
+import type { LedgerAccount } from '../../domain/entities/LedgerAccount';
 import type { LedgerAccountRepository } from '../../domain/repositories/LedgerAccountRepository';
 import type { LedgerEntryRepository } from '../../domain/repositories/LedgerEntryRepository';
 import type { PlanningEventRepository } from '../../domain/repositories/PlanningEventRepository';
@@ -61,11 +62,6 @@ export class SettleRecurrencePlanningEventUseCase {
       (sum, line) => sum + line.debitCents,
       0,
     );
-    if (input.settlementAmountCents !== recognitionAmountCents) {
-      throw new Error(
-        'Neste MVP, o valor da liquidação deve ser igual ao valor reconhecido. Diferenças serão tratadas em fluxo futuro de ajuste.',
-      );
-    }
 
     const settlementAccount = await this.accountRepository.getById(input.settlementAccountId);
     if (!settlementAccount || settlementAccount.controlCenterId !== input.controlCenterId) {
@@ -75,12 +71,33 @@ export class SettleRecurrencePlanningEventUseCase {
       throw new Error('Conta de disponibilidade inativa ou encerrada.');
     }
 
+    const accountingTargets = await this.resolveRecognitionAccounts(recognitionEntry);
+    const deltaCents = input.settlementAmountCents - recognitionAmountCents;
+    const adjustmentLedgerEntry =
+      deltaCents !== 0
+        ? await this.buildSettlementAdjustmentEntry({
+            event,
+            deltaCents,
+            settlementDate: input.settlementDate,
+            recognitionEntry,
+            obligationAccountId: accountingTargets.obligationAccountId,
+            receivableAccountId: accountingTargets.receivableAccountId,
+            settledByUserId: input.settledByUserId,
+            memo: input.memo,
+          })
+        : null;
+
+    if (adjustmentLedgerEntry) {
+      await this.ledgerEntryRepository.save(adjustmentLedgerEntry);
+    }
+
     const settlementLedgerEntry = await this.buildSettlementEntry({
       event,
-      recognitionEntry,
       settlementDate: input.settlementDate,
       settlementAmountCents: input.settlementAmountCents,
       settlementLedgerAccountId: settlementAccount.ledgerAccountId,
+      obligationAccountId: accountingTargets.obligationAccountId,
+      receivableAccountId: accountingTargets.receivableAccountId,
       settledByUserId: input.settledByUserId,
       memo: input.memo,
     });
@@ -97,6 +114,15 @@ export class SettleRecurrencePlanningEventUseCase {
       amountCents: input.settlementAmountCents,
       ledgerLinks: [
         ...event.ledgerLinks,
+        ...(adjustmentLedgerEntry
+          ? [
+              {
+                ledgerEntryId: adjustmentLedgerEntry.id,
+                relation: 'adjustment' as const,
+                createdAt: now,
+              },
+            ]
+          : []),
         {
           ledgerEntryId: settlementLedgerEntry.id,
           relation: 'settlement',
@@ -113,45 +139,19 @@ export class SettleRecurrencePlanningEventUseCase {
 
   private async buildSettlementEntry(input: {
     event: PlanningEvent;
-    recognitionEntry: LedgerEntry;
     settlementDate: ISODateString;
     settlementAmountCents: number;
     settlementLedgerAccountId: ID;
+    obligationAccountId: ID;
+    receivableAccountId: ID;
     settledByUserId: ID;
     memo?: string;
   }): Promise<LedgerEntry> {
-    const recognitionLinesWithAccounts = await Promise.all(
-      input.recognitionEntry.lines.map(async (line) => ({
-        line,
-        account: await this.ledgerAccountRepository.getById(line.ledgerAccountId),
-      })),
-    );
-
-    const fallbackDebitAccountId = input.recognitionEntry.lines.find(
-      (line) => line.debitCents > 0,
-    )?.ledgerAccountId;
-    const fallbackCreditAccountId = input.recognitionEntry.lines.find(
-      (line) => line.creditCents > 0,
-    )?.ledgerAccountId;
-
-    if (!fallbackDebitAccountId || !fallbackCreditAccountId) {
-      throw new Error('Lançamento de reconhecimento inválido para liquidação.');
-    }
-
-    const receivableAccountId =
-      recognitionLinesWithAccounts.find(
-        (item) => item.line.debitCents > 0 && item.account?.kind === 'asset',
-      )?.line.ledgerAccountId ?? fallbackDebitAccountId;
-    const obligationAccountId =
-      recognitionLinesWithAccounts.find(
-        (item) => item.line.creditCents > 0 && item.account?.kind === 'liability',
-      )?.line.ledgerAccountId ?? fallbackCreditAccountId;
-
     const lines =
       input.event.direction === 'outflow'
         ? [
             {
-              ledgerAccountId: obligationAccountId,
+              ledgerAccountId: input.obligationAccountId,
               debitCents: input.settlementAmountCents,
               creditCents: 0,
             },
@@ -168,7 +168,7 @@ export class SettleRecurrencePlanningEventUseCase {
               creditCents: 0,
             },
             {
-              ledgerAccountId: receivableAccountId,
+              ledgerAccountId: input.receivableAccountId,
               debitCents: 0,
               creditCents: input.settlementAmountCents,
             },
@@ -186,5 +186,158 @@ export class SettleRecurrencePlanningEventUseCase {
       reason: input.memo?.trim() || 'Liquidação de recorrência confirmada',
       createdAt: new Date().toISOString(),
     };
+  }
+
+  private async resolveRecognitionAccounts(recognitionEntry: LedgerEntry): Promise<{
+    obligationAccountId: ID;
+    receivableAccountId: ID;
+  }> {
+    const recognitionLinesWithAccounts = await Promise.all(
+      recognitionEntry.lines.map(async (line) => ({
+        line,
+        account: await this.ledgerAccountRepository.getById(line.ledgerAccountId),
+      })),
+    );
+
+    const fallbackDebitAccountId = recognitionEntry.lines.find((line) => line.debitCents > 0)
+      ?.ledgerAccountId;
+    const fallbackCreditAccountId = recognitionEntry.lines.find((line) => line.creditCents > 0)
+      ?.ledgerAccountId;
+
+    if (!fallbackDebitAccountId || !fallbackCreditAccountId) {
+      throw new Error('Lançamento de reconhecimento inválido para liquidação.');
+    }
+
+    const receivableAccountId =
+      recognitionLinesWithAccounts.find(
+        (item) => item.line.debitCents > 0 && item.account?.kind === 'asset',
+      )?.line.ledgerAccountId ?? fallbackDebitAccountId;
+    const obligationAccountId =
+      recognitionLinesWithAccounts.find(
+        (item) => item.line.creditCents > 0 && item.account?.kind === 'liability',
+      )?.line.ledgerAccountId ?? fallbackCreditAccountId;
+
+    return {
+      obligationAccountId,
+      receivableAccountId,
+    };
+  }
+
+  private async buildSettlementAdjustmentEntry(input: {
+    event: PlanningEvent;
+    deltaCents: number;
+    settlementDate: ISODateString;
+    recognitionEntry: LedgerEntry;
+    obligationAccountId: ID;
+    receivableAccountId: ID;
+    settledByUserId: ID;
+    memo?: string;
+  }): Promise<LedgerEntry> {
+    const adjustmentRevenueAccount = await this.ensureSystemLedgerAccount(
+      input.event.controlCenterId,
+      'RECEITAS:AJUSTE_LIQUIDACAO',
+      'Receitas - Ajuste Liquidação',
+      'revenue',
+    );
+    const adjustmentExpenseAccount = await this.ensureSystemLedgerAccount(
+      input.event.controlCenterId,
+      'DESPESAS:AJUSTE_LIQUIDACAO',
+      'Despesas - Ajuste Liquidação',
+      'expense',
+    );
+    const absoluteDelta = Math.abs(input.deltaCents);
+
+    const lines =
+      input.event.direction === 'outflow'
+        ? input.deltaCents < 0
+          ? [
+              {
+                ledgerAccountId: input.obligationAccountId,
+                debitCents: absoluteDelta,
+                creditCents: 0,
+              },
+              {
+                ledgerAccountId: adjustmentRevenueAccount.id,
+                debitCents: 0,
+                creditCents: absoluteDelta,
+              },
+            ]
+          : [
+              {
+                ledgerAccountId: adjustmentExpenseAccount.id,
+                debitCents: absoluteDelta,
+                creditCents: 0,
+              },
+              {
+                ledgerAccountId: input.obligationAccountId,
+                debitCents: 0,
+                creditCents: absoluteDelta,
+              },
+            ]
+        : input.deltaCents < 0
+          ? [
+              {
+                ledgerAccountId: adjustmentExpenseAccount.id,
+                debitCents: absoluteDelta,
+                creditCents: 0,
+              },
+              {
+                ledgerAccountId: input.receivableAccountId,
+                debitCents: 0,
+                creditCents: absoluteDelta,
+              },
+            ]
+          : [
+              {
+                ledgerAccountId: input.receivableAccountId,
+                debitCents: absoluteDelta,
+                creditCents: 0,
+              },
+              {
+                ledgerAccountId: adjustmentRevenueAccount.id,
+                debitCents: 0,
+                creditCents: absoluteDelta,
+              },
+            ];
+
+    return {
+      id: crypto.randomUUID(),
+      controlCenterId: input.event.controlCenterId,
+      date: input.settlementDate,
+      description: `Ajuste liquidação recorrência - ${input.event.description}`,
+      referenceType: 'recurrence_settlement_adjustment',
+      referenceId: input.event.id,
+      lines,
+      createdByUserId: input.settledByUserId,
+      reason:
+        input.memo?.trim() ||
+        `Ajuste por diferença entre reconhecimento e liquidação (${input.recognitionEntry.id})`,
+      createdAt: new Date().toISOString(),
+    };
+  }
+
+  private async ensureSystemLedgerAccount(
+    controlCenterId: ID,
+    code: string,
+    name: string,
+    kind: LedgerAccount['kind'],
+  ): Promise<LedgerAccount> {
+    const existing = await this.ledgerAccountRepository.getByCode(controlCenterId, code);
+    if (existing) {
+      return existing;
+    }
+
+    const created: LedgerAccount = {
+      id: crypto.randomUUID(),
+      controlCenterId,
+      code,
+      name,
+      kind,
+      isSystem: true,
+      createdAt: new Date().toISOString(),
+    };
+
+    await this.ledgerAccountRepository.save(created);
+    return created;
   }
 }

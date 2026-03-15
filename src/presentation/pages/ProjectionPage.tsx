@@ -147,6 +147,15 @@ export function ProjectionPage() {
     };
   };
 
+  const getDirectionalValueColor = (event: PlanningEvent): string => {
+    return event.direction === 'inflow' ? '#1f6f8b' : '#a23b72';
+  };
+
+  const formatDirectionalValue = (event: PlanningEvent): string => {
+    const signal = event.direction === 'inflow' ? '+' : '-';
+    return `${signal} ${formatCurrencyFromCents(event.amountCents)}`;
+  };
+
   useEffect(() => {
     if (!session) {
       return;
@@ -428,8 +437,13 @@ export function ProjectionPage() {
                     {functionalStateLabel(event)} • {sourceLabel(event)}
                   </span>
                   <span style={{ color: '#222' }}>{event.description}</span>
-                  <strong style={{ fontWeight: tone.valueWeight, color: tone.valueColor }}>
-                    {formatCurrencyFromCents(event.amountCents)}
+                  <strong
+                    style={{
+                      fontWeight: tone.valueWeight,
+                      color: getDirectionalValueColor(event),
+                    }}
+                  >
+                    {formatDirectionalValue(event)}
                   </strong>
 
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.2rem' }}>
