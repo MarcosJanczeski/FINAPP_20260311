@@ -820,16 +820,19 @@ Estados e tipos mínimos em `PlanningEvent`:
 * status técnico atual suportado: `active`, `confirmed`, `canceled`, `posted` (quando existir, não deve ser tratado como etapa funcional principal do fluxo de recorrência)
 * campos mínimos de origem: `sourceType`, `sourceId`, `sourceEventKey`
 * `sourceEventKey` deve garantir idempotência de sincronização (reprocessar sem duplicar evento)
-* vínculo de auditoria com contabilidade: `ledgerLinks[]` para suportar múltiplos lançamentos relacionados (`recognition`, `settlement`, `reversal`)
+* vínculo de auditoria com contabilidade: `ledgerLinks[]` para suportar múltiplos lançamentos relacionados (`recognition`, `settlement`, `settlement_reversal`, `recognition_reversal`; `reversal` permanece apenas para compatibilidade legada)
 
 Transições mínimas:
 
 * `previsto` -> `confirmado_agendado` (reconhecimento contábil)
 * `confirmado_agendado` -> `realizado` (liquidação contábil em etapa posterior)
+* `realizado` -> `confirmado_agendado` por estorno de liquidação (`settlement_reversal`), quando o compromisso permanece existente
 * `previsto` -> `cancelado`
-* `confirmado_agendado` -> `cancelado` por estorno/compensação, sem apagar histórico
+* `confirmado_agendado` -> `previsto` por estorno de reconhecimento; se houver liquidação ativa, estornar primeiro a liquidação e depois o reconhecimento
+* `confirmado_agendado`/`realizado` -> `cancelado` (skip do período) por estorno/compensação, sem apagar histórico
 * ao desativar uma recorrência, somente previsões `active` vinculadas podem ser canceladas; eventos já confirmados/realizados permanecem como compromisso/histórico e não devem ser reabertos automaticamente
 * na reversão de confirmação, o estorno deve usar a mesma data contábil (`date`) do lançamento original; `createdAt` registra a data/hora real da execução e `reversalOf` referencia o lançamento original
+* toda reversão deve ser aditiva e auditável: nenhum `LedgerEntry` anterior pode ser apagado ou sobrescrito
 
 Status técnico atual da projeção (MVP):
 

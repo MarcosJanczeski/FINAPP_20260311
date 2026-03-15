@@ -5,102 +5,68 @@ import type { PlanningEventRepository } from '../../domain/repositories/Planning
 import type { ID } from '../../domain/types/common';
 import { buildReversalLedgerEntry, resolveActiveLedgerLink } from '../services/recurrenceLedgerLifecycle';
 
-interface ReverseRecurrenceConfirmationInput {
+interface ReverseRecurrenceSettlementInput {
   id: ID;
   controlCenterId: ID;
   reversedByUserId: ID;
-  targetState?: 'forecast' | 'canceled';
 }
 
-export class ReverseRecurrenceConfirmationUseCase {
+export class ReverseRecurrenceSettlementUseCase {
   constructor(
     private readonly planningEventRepository: PlanningEventRepository,
     private readonly ledgerEntryRepository: LedgerEntryRepository,
   ) {}
 
-  async execute(input: ReverseRecurrenceConfirmationInput): Promise<PlanningEvent> {
+  async execute(input: ReverseRecurrenceSettlementInput): Promise<PlanningEvent> {
     const event = await this.planningEventRepository.getById(input.id);
     if (!event || event.controlCenterId !== input.controlCenterId) {
       throw new Error('Evento de recorrencia nao encontrado.');
     }
-
-    if (event.type !== 'confirmado_agendado' && event.type !== 'realizado') {
-      throw new Error('Somente recorrencia confirmada ou realizada pode ser ajustada neste fluxo.');
-    }
-
-    const now = new Date().toISOString();
-    const targetState = input.targetState ?? 'forecast';
-    const newLinks = [...event.ledgerLinks];
 
     const activeSettlement = await resolveActiveLedgerLink(this.ledgerEntryRepository, {
       event,
       baseRelation: 'settlement',
       reversalRelations: ['settlement_reversal'],
     });
-    if (activeSettlement.link && activeSettlement.entry) {
-      const settlementReversal = this.buildSettlementReversalEntry(
-        activeSettlement.entry,
-        input.reversedByUserId,
-      );
-      await this.ledgerEntryRepository.save(settlementReversal);
-      newLinks.push({
-        ledgerEntryId: settlementReversal.id,
-        relation: 'settlement_reversal',
-        createdAt: now,
-      });
+    if (!activeSettlement.link || !activeSettlement.entry) {
+      throw new Error('Nao existe liquidacao ativa para estorno.');
     }
 
     const activeRecognition = await resolveActiveLedgerLink(this.ledgerEntryRepository, {
-      event: {
-        ...event,
-        ledgerLinks: newLinks,
-      },
+      event,
       baseRelation: 'recognition',
       reversalRelations: ['recognition_reversal'],
       legacyReversalRelation: 'reversal',
     });
     if (!activeRecognition.link || !activeRecognition.entry) {
-      throw new Error('Reconhecimento contabil nao encontrado para estorno.');
+      throw new Error('Reconhecimento ativo nao encontrado para retorno ao estado confirmado.');
     }
 
-    if (activeRecognition.entry.controlCenterId !== input.controlCenterId) {
-      throw new Error('Lancamento de reconhecimento nao encontrado para estorno.');
-    }
-
-    const reversalEntry = this.buildRecognitionReversalEntry(
-      activeRecognition.entry,
+    const reversalEntry = this.buildSettlementReversalEntry(
+      activeSettlement.entry,
       input.reversedByUserId,
     );
     await this.ledgerEntryRepository.save(reversalEntry);
 
+    const now = new Date().toISOString();
     const updated: PlanningEvent = {
       ...event,
-      type: targetState === 'canceled' ? 'previsto_recorrencia' : 'previsto_recorrencia',
-      status: targetState === 'canceled' ? 'canceled' : 'active',
+      type: 'confirmado_agendado',
+      status: 'confirmed',
       ledgerLinks: [
-        ...newLinks,
+        ...event.ledgerLinks,
         {
           ledgerEntryId: reversalEntry.id,
-          relation: 'recognition_reversal',
+          relation: 'settlement_reversal',
           createdAt: now,
         },
       ],
-      postedLedgerEntryId: null,
+      postedLedgerEntryId: activeRecognition.link.ledgerEntryId,
       updatedAt: now,
     };
 
     await this.planningEventRepository.save(updated);
     return updated;
-  }
-
-  private buildRecognitionReversalEntry(recognitionEntry: LedgerEntry, reversedByUserId: ID): LedgerEntry {
-    return buildReversalLedgerEntry({
-      originalEntry: recognitionEntry,
-      referenceType: 'recurrence_reversal',
-      descriptionPrefix: 'Estorno reconhecimento recorrencia',
-      reason: 'Reversao de confirmacao de recorrencia por estorno',
-      createdByUserId: reversedByUserId,
-    });
   }
 
   private buildSettlementReversalEntry(settlementEntry: LedgerEntry, reversedByUserId: ID): LedgerEntry {

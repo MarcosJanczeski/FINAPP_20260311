@@ -324,6 +324,41 @@ export function ProjectionPage() {
     }
   };
 
+  const handleReverseSettlement = async (planningEvent: PlanningEvent) => {
+    if (!controlCenterId || !session) {
+      setError('Sessao ou centro de controle nao identificado.');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Deseja reverter a liquidacao da recorrencia \"${planningEvent.description}\"?`,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setError(null);
+    setSuccess(null);
+    setIsSaving(true);
+
+    try {
+      await container.useCases.reverseRecurrenceSettlement.execute({
+        id: planningEvent.id,
+        controlCenterId,
+        reversedByUserId: session.userId,
+      });
+      await refresh();
+      setSuccess('Liquidacao revertida por estorno. O compromisso voltou para confirmado.');
+      scrollToTop();
+    } catch (currentError) {
+      setError(
+        currentError instanceof Error ? currentError.message : 'Falha ao reverter liquidacao.',
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSettlement = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!controlCenterId || !session || !settlementEvent) {
@@ -468,6 +503,15 @@ export function ProjectionPage() {
                         disabled={isSaving}
                       >
                         Reverter confirmacao
+                      </button>
+                    ) : null}
+                    {event.type === 'realizado' ? (
+                      <button
+                        type="button"
+                        onClick={() => void handleReverseSettlement(event)}
+                        disabled={isSaving}
+                      >
+                        Reverter liquidacao
                       </button>
                     ) : null}
                   </div>

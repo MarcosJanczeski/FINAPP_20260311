@@ -6,6 +6,10 @@ import type { PlanningEventRepository } from '../../domain/repositories/Planning
 import type { PlanningEvent } from '../../domain/entities/PlanningEvent';
 import type { LedgerEntry } from '../../domain/entities/LedgerEntry';
 import type { ID, ISODateString } from '../../domain/types/common';
+import {
+  resolveActiveLedgerLink,
+  sumLedgerEntryAmountByDebit,
+} from '../services/recurrenceLedgerLifecycle';
 
 interface SettleRecurrencePlanningEventInput {
   id: ID;
@@ -43,25 +47,31 @@ export class SettleRecurrencePlanningEventUseCase {
       throw new Error('Evento já está realizado.');
     }
 
-    const hasSettlement = event.ledgerLinks.some((link) => link.relation === 'settlement');
-    if (hasSettlement) {
+    const activeSettlement = await resolveActiveLedgerLink(this.ledgerEntryRepository, {
+      event,
+      baseRelation: 'settlement',
+      reversalRelations: ['settlement_reversal'],
+    });
+    if (activeSettlement.link) {
       throw new Error('Liquidação já registrada para este evento.');
     }
 
-    const recognitionLink = event.ledgerLinks.find((link) => link.relation === 'recognition');
-    if (!recognitionLink) {
+    const activeRecognition = await resolveActiveLedgerLink(this.ledgerEntryRepository, {
+      event,
+      baseRelation: 'recognition',
+      reversalRelations: ['recognition_reversal'],
+      legacyReversalRelation: 'reversal',
+    });
+    if (!activeRecognition.link || !activeRecognition.entry) {
       throw new Error('Reconhecimento contábil não encontrado para realizar liquidação.');
     }
 
-    const recognitionEntry = await this.ledgerEntryRepository.getById(recognitionLink.ledgerEntryId);
-    if (!recognitionEntry || recognitionEntry.controlCenterId !== input.controlCenterId) {
+    const recognitionEntry = activeRecognition.entry;
+    if (recognitionEntry.controlCenterId !== input.controlCenterId) {
       throw new Error('Lançamento de reconhecimento não encontrado para liquidação.');
     }
 
-    const recognitionAmountCents = recognitionEntry.lines.reduce(
-      (sum, line) => sum + line.debitCents,
-      0,
-    );
+    const recognitionAmountCents = sumLedgerEntryAmountByDebit(recognitionEntry);
 
     const settlementAccount = await this.accountRepository.getById(input.settlementAccountId);
     if (!settlementAccount || settlementAccount.controlCenterId !== input.controlCenterId) {

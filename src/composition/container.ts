@@ -23,6 +23,7 @@ import { ListRecurrencesUseCase } from '../application/use-cases/ListRecurrences
 import { UpsertRecurrenceUseCase } from '../application/use-cases/UpsertRecurrenceUseCase';
 import { ConfirmRecurrencePlanningEventUseCase } from '../application/use-cases/ConfirmRecurrencePlanningEventUseCase';
 import { ReverseRecurrenceConfirmationUseCase } from '../application/use-cases/ReverseRecurrenceConfirmationUseCase';
+import { ReverseRecurrenceSettlementUseCase } from '../application/use-cases/ReverseRecurrenceSettlementUseCase';
 import { SettleRecurrencePlanningEventUseCase } from '../application/use-cases/SettleRecurrencePlanningEventUseCase';
 import { GetAccountAvailabilityStatementUseCase } from '../application/use-cases/GetAccountAvailabilityStatementUseCase';
 import { GetProjectionAvailabilitySummaryUseCase } from '../application/use-cases/GetProjectionAvailabilitySummaryUseCase';
@@ -57,6 +58,7 @@ export interface AppContainer {
     upsertRecurrence: UpsertRecurrenceUseCase;
     confirmRecurrencePlanningEvent: ConfirmRecurrencePlanningEventUseCase;
     reverseRecurrenceConfirmation: ReverseRecurrenceConfirmationUseCase;
+    reverseRecurrenceSettlement: ReverseRecurrenceSettlementUseCase;
     settleRecurrencePlanningEvent: SettleRecurrencePlanningEventUseCase;
     getAccountAvailabilityStatement: GetAccountAvailabilityStatementUseCase;
     getProjectionAvailabilitySummary: GetProjectionAvailabilitySummaryUseCase;
@@ -123,6 +125,10 @@ export function createAppContainer(): AppContainer {
       repositories.ledgerEntryRepository,
     ),
     reverseRecurrenceConfirmation: new ReverseRecurrenceConfirmationUseCase(
+      repositories.planningEventRepository,
+      repositories.ledgerEntryRepository,
+    ),
+    reverseRecurrenceSettlement: new ReverseRecurrenceSettlementUseCase(
       repositories.planningEventRepository,
       repositories.ledgerEntryRepository,
     ),

@@ -62,8 +62,7 @@ export class SyncPlanningEventsUseCase {
     for (const sourceItem of uniqueSourceItems) {
       seenKeys.add(sourceItem.sourceEventKey);
       const current = existingAutoByKey.get(sourceItem.sourceEventKey);
-      const hasSettlement =
-        current?.ledgerLinks.some((link) => link.relation === 'settlement') ?? false;
+      const hasSettlement = current ? this.hasActiveSettlement(current) : false;
       const preserved =
         current &&
         (current.status === 'confirmed' ||
@@ -73,11 +72,11 @@ export class SyncPlanningEventsUseCase {
           ? current
           : null;
       const normalizedType =
-        preserved && preserved.ledgerLinks.some((link) => link.relation === 'settlement')
+        preserved && this.hasActiveSettlement(preserved)
           ? 'realizado'
           : preserved?.type;
       const normalizedStatus =
-        preserved && preserved.ledgerLinks.some((link) => link.relation === 'settlement')
+        preserved && this.hasActiveSettlement(preserved)
           ? 'posted'
           : preserved?.status;
 
@@ -126,7 +125,7 @@ export class SyncPlanningEventsUseCase {
   }
 
   private rankForSyncKeeper(event: PlanningEvent): number {
-    if (event.ledgerLinks.some((link) => link.relation === 'settlement')) {
+    if (this.hasActiveSettlement(event)) {
       return 0;
     }
     if (event.status === 'confirmed' || event.type === 'confirmado_agendado') {
@@ -139,5 +138,13 @@ export class SyncPlanningEventsUseCase {
       return 3;
     }
     return 4;
+  }
+
+  private hasActiveSettlement(event: PlanningEvent): boolean {
+    const settlementCount = event.ledgerLinks.filter((link) => link.relation === 'settlement').length;
+    const settlementReversalCount = event.ledgerLinks.filter(
+      (link) => link.relation === 'settlement_reversal',
+    ).length;
+    return settlementCount > settlementReversalCount;
   }
 }

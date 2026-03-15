@@ -10,7 +10,13 @@ export type PlanningEventStatus = 'active' | 'confirmed' | 'canceled' | 'posted'
 
 export type PlanningEventDirection = 'inflow' | 'outflow';
 
-export type PlanningEventLedgerRelation = 'recognition' | 'adjustment' | 'settlement' | 'reversal';
+export type PlanningEventLedgerRelation =
+  | 'recognition'
+  | 'adjustment'
+  | 'settlement'
+  | 'settlement_reversal'
+  | 'recognition_reversal'
+  | 'reversal';
 
 export interface PlanningEventLedgerLink {
   ledgerEntryId: ID;

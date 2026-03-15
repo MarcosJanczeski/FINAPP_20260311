@@ -18,7 +18,8 @@ export interface LedgerEntry {
     | 'recurrence_recognition'
     | 'recurrence_settlement_adjustment'
     | 'recurrence_settlement'
-    | 'recurrence_reversal';
+    | 'recurrence_reversal'
+    | 'recurrence_settlement_reversal';
   referenceId: ID;
   reversalOf?: ID;
   lines: LedgerEntryLine[];
