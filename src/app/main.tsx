@@ -53,6 +53,7 @@ function registerDevBridge(appContainer: AppContainer): void {
     | 'settleRecurrencePlanningEvent'
     | 'reverseRecurrenceSettlement'
     | 'reverseRecurrenceConfirmation'
+    | 'getProjectionAvailabilitySummary'
     | 'listLedgerEntries';
 
   async function invoke(action: DevBridgeAction, payload?: unknown): Promise<unknown> {
@@ -104,6 +105,10 @@ function registerDevBridge(appContainer: AppContainer): void {
       case 'reverseRecurrenceConfirmation':
         return appContainer.useCases.reverseRecurrenceConfirmation.execute(
           payload as Parameters<AppContainer['useCases']['reverseRecurrenceConfirmation']['execute']>[0],
+        );
+      case 'getProjectionAvailabilitySummary':
+        return appContainer.useCases.getProjectionAvailabilitySummary.execute(
+          payload as Parameters<AppContainer['useCases']['getProjectionAvailabilitySummary']['execute']>[0],
         );
       case 'listLedgerEntries': {
         const { controlCenterId } = payload as { controlCenterId: string };
