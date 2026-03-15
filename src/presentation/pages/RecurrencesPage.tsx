@@ -70,6 +70,38 @@ export function RecurrencesPage() {
     [filteredRecurrences],
   );
 
+  const getDirectionalValueColor = (recurrence: Recurrence): string => {
+    if (recurrence.direction === 'inflow') {
+      return recurrence.status === 'active' ? '#1f6f8b' : '#6f9fb2';
+    }
+    return recurrence.status === 'active' ? '#a23b72' : '#c692b0';
+  };
+
+  const formatDirectionalValue = (recurrence: Recurrence): string => {
+    const signal = recurrence.direction === 'inflow' ? '+' : '-';
+    return `${signal} ${formatCurrencyFromCents(recurrence.amountCents)}`;
+  };
+
+  const getCardTone = (recurrence: Recurrence): {
+    border: string;
+    background: string;
+    stateColor: string;
+  } => {
+    if (recurrence.status === 'active') {
+      return {
+        border: '1px solid #d7d7d7',
+        background: '#ffffff',
+        stateColor: '#5f5f5f',
+      };
+    }
+
+    return {
+      border: '1px solid #e4e4e4',
+      background: '#f7f7f7',
+      stateColor: '#8a8a8a',
+    };
+  };
+
   const loadData = async () => {
     if (!session) {
       return;
@@ -274,14 +306,36 @@ export function RecurrencesPage() {
               {inflowRecurrences.length === 0 ? (
                 <p>Nenhuma recorrencia de entrada.</p>
               ) : (
-                <ul>
+                <ul style={{ display: 'grid', gap: '0.75rem', listStyle: 'none', padding: 0 }}>
                   {inflowRecurrences.map((recurrence) => (
-                    <li key={recurrence.id}>
-                      <strong>{recurrence.description}</strong> | Mensal no dia {recurrence.dayOfMonth} |{' '}
-                      {formatCurrencyFromCents(recurrence.amountCents)} | {recurrence.status}
+                    <li
+                      key={recurrence.id}
+                      style={{
+                        ...getCardTone(recurrence),
+                        borderRadius: 8,
+                        padding: '0.75rem',
+                        display: 'grid',
+                        gap: '0.35rem',
+                      }}
+                    >
+                      <strong style={{ fontSize: '0.95rem' }}>{recurrence.description}</strong>
+                      <span
+                        style={{
+                          textTransform: 'capitalize',
+                          color: getCardTone(recurrence).stateColor,
+                          fontWeight: 600,
+                        }}
+                      >
+                        {recurrence.status === 'active' ? 'ativa' : 'inativa'} • recorrência mensal •
+                        entrada
+                      </span>
+                      <span style={{ color: '#222' }}>Dia {recurrence.dayOfMonth}</span>
+                      <strong style={{ color: getDirectionalValueColor(recurrence) }}>
+                        {formatDirectionalValue(recurrence)}
+                      </strong>
                       <button
                         type="button"
-                        style={{ marginLeft: '0.5rem' }}
+                        style={{ width: 'fit-content' }}
                         onClick={() => startEdit(recurrence)}
                       >
                         Editar
@@ -297,14 +351,36 @@ export function RecurrencesPage() {
               {outflowRecurrences.length === 0 ? (
                 <p>Nenhuma recorrencia de saida.</p>
               ) : (
-                <ul>
+                <ul style={{ display: 'grid', gap: '0.75rem', listStyle: 'none', padding: 0 }}>
                   {outflowRecurrences.map((recurrence) => (
-                    <li key={recurrence.id}>
-                      <strong>{recurrence.description}</strong> | Mensal no dia {recurrence.dayOfMonth} |{' '}
-                      {formatCurrencyFromCents(recurrence.amountCents)} | {recurrence.status}
+                    <li
+                      key={recurrence.id}
+                      style={{
+                        ...getCardTone(recurrence),
+                        borderRadius: 8,
+                        padding: '0.75rem',
+                        display: 'grid',
+                        gap: '0.35rem',
+                      }}
+                    >
+                      <strong style={{ fontSize: '0.95rem' }}>{recurrence.description}</strong>
+                      <span
+                        style={{
+                          textTransform: 'capitalize',
+                          color: getCardTone(recurrence).stateColor,
+                          fontWeight: 600,
+                        }}
+                      >
+                        {recurrence.status === 'active' ? 'ativa' : 'inativa'} • recorrência mensal •
+                        saída
+                      </span>
+                      <span style={{ color: '#222' }}>Dia {recurrence.dayOfMonth}</span>
+                      <strong style={{ color: getDirectionalValueColor(recurrence) }}>
+                        {formatDirectionalValue(recurrence)}
+                      </strong>
                       <button
                         type="button"
-                        style={{ marginLeft: '0.5rem' }}
+                        style={{ width: 'fit-content' }}
                         onClick={() => startEdit(recurrence)}
                       >
                         Editar
