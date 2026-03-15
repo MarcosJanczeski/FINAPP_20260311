@@ -31,6 +31,14 @@ export function RecurrencesPage() {
     () => recurrences.find((recurrence) => recurrence.id === editingId) ?? null,
     [recurrences, editingId],
   );
+  const inflowRecurrences = useMemo(
+    () => recurrences.filter((recurrence) => recurrence.direction === 'inflow'),
+    [recurrences],
+  );
+  const outflowRecurrences = useMemo(
+    () => recurrences.filter((recurrence) => recurrence.direction === 'outflow'),
+    [recurrences],
+  );
 
   const loadData = async () => {
     if (!session) {
@@ -186,18 +194,53 @@ export function RecurrencesPage() {
         {isLoading ? <p>Carregando...</p> : null}
         {!isLoading && recurrences.length === 0 ? <p>Nenhuma recorrencia cadastrada.</p> : null}
         {recurrences.length > 0 ? (
-          <ul>
-            {recurrences.map((recurrence) => (
-              <li key={recurrence.id}>
-                <strong>{recurrence.description}</strong> | Mensal no dia {recurrence.dayOfMonth} |{' '}
-                {recurrence.direction === 'inflow' ? 'Entrada' : 'Saida'} |{' '}
-                {formatCurrencyFromCents(recurrence.amountCents)} | {recurrence.status}
-                <button type="button" style={{ marginLeft: '0.5rem' }} onClick={() => startEdit(recurrence)}>
-                  Editar
-                </button>
-              </li>
-            ))}
-          </ul>
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            <section>
+              <h3>Entradas</h3>
+              {inflowRecurrences.length === 0 ? (
+                <p>Nenhuma recorrencia de entrada.</p>
+              ) : (
+                <ul>
+                  {inflowRecurrences.map((recurrence) => (
+                    <li key={recurrence.id}>
+                      <strong>{recurrence.description}</strong> | Mensal no dia {recurrence.dayOfMonth} |{' '}
+                      {formatCurrencyFromCents(recurrence.amountCents)} | {recurrence.status}
+                      <button
+                        type="button"
+                        style={{ marginLeft: '0.5rem' }}
+                        onClick={() => startEdit(recurrence)}
+                      >
+                        Editar
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section>
+              <h3>Saidas</h3>
+              {outflowRecurrences.length === 0 ? (
+                <p>Nenhuma recorrencia de saida.</p>
+              ) : (
+                <ul>
+                  {outflowRecurrences.map((recurrence) => (
+                    <li key={recurrence.id}>
+                      <strong>{recurrence.description}</strong> | Mensal no dia {recurrence.dayOfMonth} |{' '}
+                      {formatCurrencyFromCents(recurrence.amountCents)} | {recurrence.status}
+                      <button
+                        type="button"
+                        style={{ marginLeft: '0.5rem' }}
+                        onClick={() => startEdit(recurrence)}
+                      >
+                        Editar
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
         ) : null}
       </section>
 
