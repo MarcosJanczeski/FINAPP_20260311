@@ -74,9 +74,20 @@ interface ProjectionSummary {
   consideredEventsCount: number;
 }
 
+interface LifecycleStepReport {
+  step: string;
+  expectedState: string;
+  foundState: string;
+  activeLedgerRelations: string;
+  reversalRefs: string;
+  projectionImpact: string;
+  status: 'PASS' | 'FAIL';
+}
+
 test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoes > cancelamento por periodo', async ({
   page,
-}) => {
+}, testInfo) => {
+  const lifecycleReport: LifecycleStepReport[] = [];
   await page.addInitScript((namespace: string) => {
     Object.keys(window.localStorage)
       .filter((key) => key.startsWith(`${namespace}.`))
@@ -153,6 +164,14 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
     'previsto',
     true,
   );
+  lifecycleReport.push(
+    await buildStepReport(page, controlCenter.id, event, {
+      step: '1) previsto',
+      expectedState: 'previsto',
+      projectionImpact: 'Ocorrência aparece na projeção operacional como previsão.',
+      status: 'PASS',
+    }),
+  );
 
   // 2) confirmação
   await invokeBridge(page, 'confirmRecurrencePlanningEvent', {
@@ -178,6 +197,14 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
     'confirmado',
     true,
   );
+  lifecycleReport.push(
+    await buildStepReport(page, controlCenter.id, event, {
+      step: '2) confirmação',
+      expectedState: 'confirmado',
+      projectionImpact: 'Ocorrência aparece como compromisso na projeção operacional.',
+      status: 'PASS',
+    }),
+  );
 
   // 3) liquidação
   await invokeBridge(page, 'settleRecurrencePlanningEvent', {
@@ -201,6 +228,14 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
     currentPeriodKey,
     'realizado',
     true,
+  );
+  lifecycleReport.push(
+    await buildStepReport(page, controlCenter.id, event, {
+      step: '3) liquidação',
+      expectedState: 'realizado',
+      projectionImpact: 'Ocorrência passa para realizado sem dupla contagem de previsão/compromisso.',
+      status: 'PASS',
+    }),
   );
 
   // 4) estorno de liquidação -> confirmado
@@ -240,6 +275,14 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
     'confirmado',
     true,
   );
+  lifecycleReport.push(
+    await buildStepReport(page, controlCenter.id, event, {
+      step: '4) reverse settlement',
+      expectedState: 'confirmado',
+      projectionImpact: 'Após estorno da liquidação, ocorrência retorna como compromisso.',
+      status: 'PASS',
+    }),
+  );
 
   // 5) estorno de confirmação -> previsto
   await invokeBridge(page, 'reverseRecurrenceConfirmation', {
@@ -272,6 +315,14 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
     'previsto',
     true,
   );
+  lifecycleReport.push(
+    await buildStepReport(page, controlCenter.id, event, {
+      step: '5) reverse confirmation',
+      expectedState: 'previsto',
+      projectionImpact: 'Após estorno da confirmação, ocorrência retorna para previsão.',
+      status: 'PASS',
+    }),
+  );
 
   // 6) nova confirmação
   await invokeBridge(page, 'confirmRecurrencePlanningEvent', {
@@ -294,6 +345,14 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
     'confirmado',
     true,
   );
+  lifecycleReport.push(
+    await buildStepReport(page, controlCenter.id, event, {
+      step: '6) nova confirmação',
+      expectedState: 'confirmado',
+      projectionImpact: 'Reconfirmação recoloca ocorrência como compromisso.',
+      status: 'PASS',
+    }),
+  );
 
   // 7) nova liquidação
   await invokeBridge(page, 'settleRecurrencePlanningEvent', {
@@ -315,6 +374,14 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
     'realizado',
     true,
   );
+  lifecycleReport.push(
+    await buildStepReport(page, controlCenter.id, event, {
+      step: '7) nova liquidação',
+      expectedState: 'realizado',
+      projectionImpact: 'Nova liquidação aplicada sem duplicidade ativa.',
+      status: 'PASS',
+    }),
+  );
 
   // 8) cancelamento da ocorrência realizada via reversões em cadeia
   await invokeBridge(page, 'reverseRecurrenceConfirmation', {
@@ -332,6 +399,14 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
   expect(countLinks(event, 'recognition_reversal')).toBeGreaterThan(1);
   await assertAllReversalsHaveSource(page, controlCenter.id, event);
   await assertProjectionForCurrentPeriod(page, controlCenter.id, currentPeriodKey, 'cancelado', false);
+  lifecycleReport.push(
+    await buildStepReport(page, controlCenter.id, event, {
+      step: '8) cancelamento do período (cadeia)',
+      expectedState: 'cancelado',
+      projectionImpact: 'Ocorrência cancelada do período deixa de aparecer na projeção operacional.',
+      status: 'PASS',
+    }),
+  );
 
   // 9) períodos futuros da recorrência continuam existindo
   await invokeBridge(page, 'syncPlanningEvents', { controlCenterId: controlCenter.id });
@@ -339,6 +414,15 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
   const futureEvents = events.filter((item) => item.id !== event.id && item.status === 'active');
   expect(futureEvents.length).toBeGreaterThan(0);
   await assertProjectionFutureContinuity(page, controlCenter.id, recurrence.id, currentPeriodKey);
+  lifecycleReport.push({
+    step: '9) continuidade futura',
+    expectedState: 'futuro ativo',
+    foundState: 'futuro ativo',
+    activeLedgerRelations: 'N/A',
+    reversalRefs: 'N/A',
+    projectionImpact: 'Períodos futuros da recorrência permanecem projetados.',
+    status: 'PASS',
+  });
 
   // 10) desativação da recorrência: sem reabrir histórico confirmado/realizado e sem dupla contagem ativa
   await invokeBridge(page, 'upsertRecurrence', {
@@ -357,6 +441,15 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
   expect(activeAfterDeactivation.length).toBe(0);
   expect(events.some((item) => item.id === event.id && item.status === 'canceled')).toBeTruthy();
   await assertProjectionForCurrentPeriod(page, controlCenter.id, currentPeriodKey, 'cancelado', false);
+  lifecycleReport.push({
+    step: '10) desativação da recorrência base',
+    expectedState: 'sem ativos do período',
+    foundState: 'sem ativos do período',
+    activeLedgerRelations: 'N/A',
+    reversalRefs: 'N/A',
+    projectionImpact: 'Somente previstos/cancelados do período são saneados; histórico não é reaberto.',
+    status: 'PASS',
+  });
 
   const recurrences = await invokeBridge<Recurrence[]>(page, 'listRecurrences', controlCenter.id);
   const storedRecurrence = recurrences.find((item) => item.id === recurrence.id);
@@ -432,10 +525,21 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
     false,
   );
   await assertProjectionFutureContinuity(page, controlCenter.id, recurrenceSkip.id, skipCurrentPeriodKey);
+  lifecycleReport.push(
+    await buildStepReport(page, controlCenter.id, skipEvent, {
+      step: 'Edge 2) reverse settlement -> cancel skip',
+      expectedState: 'cancelado',
+      projectionImpact:
+        'Após reversão parcial e cancelamento, período atual sai da projeção operacional e futuros continuam.',
+      status: 'PASS',
+    }),
+  );
 
   const recurrencesAfterSkip = await invokeBridge<Recurrence[]>(page, 'listRecurrences', controlCenter.id);
   const storedRecurrenceSkip = recurrencesAfterSkip.find((item) => item.id === recurrenceSkip.id);
   expect(storedRecurrenceSkip?.status).toBe('active');
+
+  await emitLifecycleReport(testInfo, lifecycleReport);
 });
 
 async function invokeBridge<T>(page: import('@playwright/test').Page, action: DevBridgeAction, payload?: unknown): Promise<T> {
@@ -670,4 +774,63 @@ function functionalState(event: PlanningEvent): 'previsto' | 'confirmado' | 'rea
     return 'confirmado';
   }
   return 'previsto';
+}
+
+async function buildStepReport(
+  page: import('@playwright/test').Page,
+  controlCenterId: string,
+  event: PlanningEvent,
+  input: {
+    step: string;
+    expectedState: string;
+    projectionImpact: string;
+    status: 'PASS' | 'FAIL';
+  },
+): Promise<LifecycleStepReport> {
+  const activeRecognition = await countActiveBaseLinks(page, controlCenterId, event, 'recognition');
+  const activeSettlement = await countActiveBaseLinks(page, controlCenterId, event, 'settlement');
+  const reversals = event.ledgerLinks
+    .filter((link) =>
+      ['settlement_reversal', 'recognition_reversal', 'reversal'].includes(link.relation),
+    )
+    .map((link) => `${link.relation}:${link.ledgerEntryId.slice(0, 8)}`)
+    .join(', ');
+
+  return {
+    step: input.step,
+    expectedState: input.expectedState,
+    foundState: functionalState(event),
+    activeLedgerRelations: `recognition=${activeRecognition}, settlement=${activeSettlement}`,
+    reversalRefs: reversals || '-',
+    projectionImpact: input.projectionImpact,
+    status: input.status,
+  };
+}
+
+async function emitLifecycleReport(
+  testInfo: import('@playwright/test').TestInfo,
+  report: LifecycleStepReport[],
+): Promise<void> {
+  if (report.length === 0) {
+    return;
+  }
+
+  const lines = [
+    'LIFECYCLE VALIDATION REPORT',
+    ...report.map(
+      (item) =>
+        `${item.status} | ${item.step} | esperado=${item.expectedState} | encontrado=${item.foundState} | ativos=${item.activeLedgerRelations} | reversoes=${item.reversalRefs} | projecao=${item.projectionImpact}`,
+    ),
+  ];
+  const text = `${lines.join('\n')}\n`;
+  console.log(text);
+
+  await testInfo.attach('recurrence-lifecycle-report.txt', {
+    body: Buffer.from(text, 'utf-8'),
+    contentType: 'text/plain',
+  });
+  await testInfo.attach('recurrence-lifecycle-report.json', {
+    body: Buffer.from(`${JSON.stringify(report, null, 2)}\n`, 'utf-8'),
+    contentType: 'application/json',
+  });
 }
