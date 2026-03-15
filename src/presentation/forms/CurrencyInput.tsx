@@ -33,6 +33,14 @@ export function CurrencyInput({
       value={displayValue}
       placeholder={placeholder}
       style={{ textAlign: 'right' }}
+      onFocus={(event) => {
+        const input = event.currentTarget;
+        input.select();
+        if (input.selectionStart === null || input.selectionEnd === null) {
+          const end = input.value.length;
+          input.setSelectionRange(end, end);
+        }
+      }}
       onChange={(event) => {
         const digits = event.target.value.replace(/\D/g, '');
         const cents = digits ? Number.parseInt(digits, 10) : 0;
