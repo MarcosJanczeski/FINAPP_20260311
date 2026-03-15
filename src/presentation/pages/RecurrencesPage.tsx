@@ -26,18 +26,48 @@ export function RecurrencesPage() {
   const [amountCents, setAmountCents] = useState(0);
   const [dayOfMonth, setDayOfMonth] = useState(1);
   const [isActive, setIsActive] = useState(true);
+  const [showActive, setShowActive] = useState(true);
+  const [showInactive, setShowInactive] = useState(true);
+  const [showInflows, setShowInflows] = useState(true);
+  const [showOutflows, setShowOutflows] = useState(true);
 
   const selected = useMemo(
     () => recurrences.find((recurrence) => recurrence.id === editingId) ?? null,
     [recurrences, editingId],
   );
+  const filteredRecurrences = useMemo(() => {
+    const statusAllows = (status: Recurrence['status']) => {
+      const noneSelected = !showActive && !showInactive;
+      const allSelected = showActive && showInactive;
+      if (noneSelected || allSelected) {
+        return true;
+      }
+      return status === 'active' ? showActive : showInactive;
+    };
+
+    const directionAllows = (directionValue: PlanningEventDirection) => {
+      const noneSelected = !showInflows && !showOutflows;
+      const allSelected = showInflows && showOutflows;
+      if (noneSelected || allSelected) {
+        return true;
+      }
+      return directionValue === 'inflow' ? showInflows : showOutflows;
+    };
+
+    return recurrences.filter((recurrence) => {
+      const statusMatches = statusAllows(recurrence.status);
+      const directionMatches = directionAllows(recurrence.direction);
+      return statusMatches && directionMatches;
+    });
+  }, [recurrences, showActive, showInactive, showInflows, showOutflows]);
+
   const inflowRecurrences = useMemo(
-    () => recurrences.filter((recurrence) => recurrence.direction === 'inflow'),
-    [recurrences],
+    () => filteredRecurrences.filter((recurrence) => recurrence.direction === 'inflow'),
+    [filteredRecurrences],
   );
   const outflowRecurrences = useMemo(
-    () => recurrences.filter((recurrence) => recurrence.direction === 'outflow'),
-    [recurrences],
+    () => filteredRecurrences.filter((recurrence) => recurrence.direction === 'outflow'),
+    [filteredRecurrences],
   );
 
   const loadData = async () => {
@@ -194,6 +224,50 @@ export function RecurrencesPage() {
         {isLoading ? <p>Carregando...</p> : null}
         {!isLoading && recurrences.length === 0 ? <p>Nenhuma recorrencia cadastrada.</p> : null}
         {recurrences.length > 0 ? (
+          <div style={{ display: 'grid', gap: '0.5rem', marginBottom: '0.75rem', maxWidth: 420 }}>
+            <h3>Filtros</h3>
+            <p style={{ margin: 0, fontWeight: 600 }}>Status</p>
+            <label htmlFor="filter-active" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <input
+                id="filter-active"
+                type="checkbox"
+                checked={showActive}
+                onChange={(event) => setShowActive(event.target.checked)}
+              />
+              Ativas
+            </label>
+            <label htmlFor="filter-inactive" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <input
+                id="filter-inactive"
+                type="checkbox"
+                checked={showInactive}
+                onChange={(event) => setShowInactive(event.target.checked)}
+              />
+              Inativas
+            </label>
+
+            <p style={{ margin: 0, fontWeight: 600 }}>Direcao</p>
+            <label htmlFor="filter-inflow" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <input
+                id="filter-inflow"
+                type="checkbox"
+                checked={showInflows}
+                onChange={(event) => setShowInflows(event.target.checked)}
+              />
+              Entradas
+            </label>
+            <label htmlFor="filter-outflow" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <input
+                id="filter-outflow"
+                type="checkbox"
+                checked={showOutflows}
+                onChange={(event) => setShowOutflows(event.target.checked)}
+              />
+              Saidas
+            </label>
+          </div>
+        ) : null}
+        {recurrences.length > 0 ? (
           <div style={{ display: 'grid', gap: '1rem' }}>
             <section>
               <h3>Entradas</h3>
@@ -241,6 +315,9 @@ export function RecurrencesPage() {
               )}
             </section>
           </div>
+        ) : null}
+        {recurrences.length > 0 && filteredRecurrences.length === 0 ? (
+          <p>Nenhuma recorrencia encontrada para os filtros selecionados.</p>
         ) : null}
       </section>
 
