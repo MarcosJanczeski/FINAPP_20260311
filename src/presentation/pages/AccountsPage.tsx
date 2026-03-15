@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom';
 import type { AccountNature, AccountType } from '../../domain/entities/Account';
 import type { AccountListItemDTO } from '../../application/dto/AccountSetupDTO';
 import type { LedgerAccount } from '../../domain/entities/LedgerAccount';
-import type { LedgerEntry } from '../../domain/entities/LedgerEntry';
 import type { AccountAvailabilityStatementDTO } from '../../application/use-cases/GetAccountAvailabilityStatementUseCase';
 import { ROUTES } from '../../shared/constants/routes';
 import { RoutePlaceholder } from '../components/RoutePlaceholder';
@@ -33,7 +32,6 @@ export function AccountsPage() {
   const [controlCenterId, setControlCenterId] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<AccountListItemDTO[]>([]);
   const [ledgerAccounts, setLedgerAccounts] = useState<LedgerAccount[]>([]);
-  const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([]);
   const [availabilityStatement, setAvailabilityStatement] =
     useState<AccountAvailabilityStatementDTO | null>(null);
 
@@ -97,7 +95,6 @@ export function AccountsPage() {
         setControlCenterId(setup.controlCenterId);
         setAccounts(setup.accounts);
         setLedgerAccounts(setup.ledgerAccounts);
-        setLedgerEntries(setup.ledgerEntries);
 
         if (!selectedAccountId && setup.accounts.length > 0) {
           setSelectedAccountId(setup.accounts[0].id);
@@ -127,7 +124,6 @@ export function AccountsPage() {
     setControlCenterId(setup.controlCenterId);
     setAccounts(setup.accounts);
     setLedgerAccounts(setup.ledgerAccounts);
-    setLedgerEntries(setup.ledgerEntries);
 
     if (setup.accounts.length === 0) {
       setSelectedAccountId('');
@@ -674,28 +670,6 @@ export function AccountsPage() {
         </section>
       ) : null}
 
-      <section style={{ marginTop: '1rem' }}>
-        <h2>Lancamentos contabeis de abertura e ajuste</h2>
-        {ledgerEntries.length === 0 ? (
-          <p>Nenhum lancamento contabil.</p>
-        ) : (
-          <ul>
-            {ledgerEntries
-              .filter((entry) => entry.referenceType.startsWith('account_opening'))
-              .map((entry) => {
-                const amount = entry.lines.reduce(
-                  (max, line) => Math.max(max, line.debitCents, line.creditCents),
-                  0,
-                );
-                return (
-                  <li key={entry.id}>
-                    {entry.referenceType} - {entry.description} - {formatCurrencyFromCents(amount)}
-                  </li>
-                );
-              })}
-          </ul>
-        )}
-      </section>
     </RoutePlaceholder>
   );
 }
