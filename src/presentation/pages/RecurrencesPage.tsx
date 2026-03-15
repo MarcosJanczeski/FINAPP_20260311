@@ -20,11 +20,12 @@ export function RecurrencesPage() {
   const [success, setSuccess] = useState<string | null>(null);
 
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isFormVisible, setIsFormVisible] = useState(false);
   const [description, setDescription] = useState('');
   const [direction, setDirection] = useState<PlanningEventDirection>('outflow');
   const [amountCents, setAmountCents] = useState(0);
   const [dayOfMonth, setDayOfMonth] = useState(1);
-  const [status, setStatus] = useState<'active' | 'inactive'>('active');
+  const [isActive, setIsActive] = useState(true);
 
   const selected = useMemo(
     () => recurrences.find((recurrence) => recurrence.id === editingId) ?? null,
@@ -70,13 +71,52 @@ export function RecurrencesPage() {
     };
   }, [session]);
 
-  const resetForm = () => {
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const focusRecurrenceForm = () => {
+    const section = document.getElementById('recurrence-form-section');
+    section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.setTimeout(() => {
+      const input = document.getElementById('recurrence-description') as HTMLInputElement | null;
+      if (!input) {
+        return;
+      }
+      input.focus();
+      input.select();
+    }, 120);
+  };
+
+  useEffect(() => {
+    if (!isFormVisible) {
+      return;
+    }
+    focusRecurrenceForm();
+  }, [editingId, isFormVisible]);
+
+  const resetForm = (scrollOnReset = false) => {
     setEditingId(null);
     setDescription('');
     setDirection('outflow');
     setAmountCents(0);
     setDayOfMonth(1);
-    setStatus('active');
+    setIsActive(true);
+    if (scrollOnReset) {
+      scrollToTop();
+    }
+  };
+
+  const openCreateForm = () => {
+    setError(null);
+    setSuccess(null);
+    resetForm(false);
+    setIsFormVisible(true);
+  };
+
+  const closeForm = () => {
+    setIsFormVisible(false);
+    resetForm(true);
   };
 
   const startEdit = (recurrence: Recurrence) => {
@@ -85,9 +125,10 @@ export function RecurrencesPage() {
     setDirection(recurrence.direction);
     setAmountCents(recurrence.amountCents);
     setDayOfMonth(recurrence.dayOfMonth);
-    setStatus(recurrence.status);
+    setIsActive(recurrence.status === 'active');
     setError(null);
     setSuccess(null);
+    setIsFormVisible(true);
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -109,12 +150,13 @@ export function RecurrencesPage() {
         dayOfMonth,
         direction,
         amountCents,
-        status,
+        status: isActive ? 'active' : 'inactive',
       });
 
       await container.useCases.syncPlanningEvents.execute({ controlCenterId });
       await loadData();
-      resetForm();
+      setIsFormVisible(false);
+      resetForm(true);
       setSuccess('Recorrencia salva com sucesso.');
     } catch (currentError) {
       setError(currentError instanceof Error ? currentError.message : 'Falha ao salvar recorrencia.');
@@ -131,72 +173,13 @@ export function RecurrencesPage() {
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
         <Link to={ROUTES.creditCards}>Voltar para cartoes</Link>
         <Link to={ROUTES.projection}>Proximo: projecao</Link>
+        <button type="button" onClick={openCreateForm}>
+          Nova recorrencia
+        </button>
       </div>
 
       {success ? <p>{success}</p> : null}
       {error ? <p>{error}</p> : null}
-
-      <section style={{ marginTop: '1rem' }}>
-        <h2>{selected ? 'Editar recorrencia' : 'Nova recorrencia'}</h2>
-        <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '0.5rem', maxWidth: 380 }}>
-          <label htmlFor="recurrence-description">Descricao</label>
-          <input
-            id="recurrence-description"
-            type="text"
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            required
-          />
-
-          <label htmlFor="recurrence-frequency">Periodicidade</label>
-          <input id="recurrence-frequency" type="text" value="Mensal" disabled />
-
-          <label htmlFor="recurrence-day">Dia do mes (1-31)</label>
-          <input
-            id="recurrence-day"
-            type="number"
-            min={1}
-            max={31}
-            value={dayOfMonth}
-            onChange={(event) => setDayOfMonth(Number.parseInt(event.target.value, 10) || 1)}
-            required
-          />
-
-          <label htmlFor="recurrence-direction">Direcao</label>
-          <select
-            id="recurrence-direction"
-            value={direction}
-            onChange={(event) => setDirection(event.target.value as PlanningEventDirection)}
-          >
-            <option value="outflow">Saida</option>
-            <option value="inflow">Entrada</option>
-          </select>
-
-          <label htmlFor="recurrence-amount">Valor</label>
-          <CurrencyInput id="recurrence-amount" valueCents={amountCents} onChangeCents={setAmountCents} />
-
-          <label htmlFor="recurrence-status">Status</label>
-          <select
-            id="recurrence-status"
-            value={status}
-            onChange={(event) => setStatus(event.target.value as 'active' | 'inactive')}
-          >
-            <option value="active">Ativa</option>
-            <option value="inactive">Inativa</option>
-          </select>
-
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button type="submit" disabled={isSaving}>
-              {isSaving ? 'Salvando...' : selected ? 'Salvar edicao' : 'Salvar recorrencia'}
-            </button>
-            {selected ? (
-              <button type="button" onClick={resetForm} disabled={isSaving}>
-                Cancelar edicao
-              </button>
-            ) : null}
-          </div>
-        </form>
-      </section>
 
       <section style={{ marginTop: '1rem' }}>
         <h2>Recorrencias cadastradas</h2>
@@ -217,6 +200,75 @@ export function RecurrencesPage() {
           </ul>
         ) : null}
       </section>
+
+      {isFormVisible ? (
+        <section id="recurrence-form-section" style={{ marginTop: '1rem' }}>
+          <h2>{selected ? 'Editar recorrencia' : 'Nova recorrencia'}</h2>
+          <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '0.5rem', maxWidth: 380 }}>
+            <label htmlFor="recurrence-description">Descricao</label>
+            <input
+              id="recurrence-description"
+              type="text"
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              required
+            />
+
+            <label htmlFor="recurrence-frequency">Periodicidade</label>
+            <input id="recurrence-frequency" type="text" value="Mensal" disabled />
+
+            <label htmlFor="recurrence-day">Dia do mes (1-31)</label>
+            <input
+              id="recurrence-day"
+              type="number"
+              min={1}
+              max={31}
+              value={dayOfMonth}
+              onChange={(event) => setDayOfMonth(Number.parseInt(event.target.value, 10) || 1)}
+              required
+            />
+
+            <label htmlFor="recurrence-direction">Direcao</label>
+            <select
+              id="recurrence-direction"
+              value={direction}
+              onChange={(event) => setDirection(event.target.value as PlanningEventDirection)}
+            >
+              <option value="outflow">Saida</option>
+              <option value="inflow">Entrada</option>
+            </select>
+
+            <label htmlFor="recurrence-amount">Valor</label>
+            <CurrencyInput
+              id="recurrence-amount"
+              valueCents={amountCents}
+              onChangeCents={setAmountCents}
+            />
+
+            <label
+              htmlFor="recurrence-active"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              <input
+                id="recurrence-active"
+                type="checkbox"
+                checked={isActive}
+                onChange={(event) => setIsActive(event.target.checked)}
+              />
+              Ativa
+            </label>
+
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button type="submit" disabled={isSaving}>
+                {isSaving ? 'Salvando...' : selected ? 'Salvar edicao' : 'Salvar recorrencia'}
+              </button>
+              <button type="button" onClick={closeForm} disabled={isSaving}>
+                {selected ? 'Cancelar edicao' : 'Cancelar'}
+              </button>
+            </div>
+          </form>
+        </section>
+      ) : null}
     </RoutePlaceholder>
   );
 }
