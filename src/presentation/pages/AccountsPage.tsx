@@ -445,42 +445,78 @@ export function AccountsPage() {
         {accounts.length === 0 ? (
           <p>Nenhuma conta cadastrada.</p>
         ) : (
-          <ul>
+          <ul style={{ display: 'grid', gap: '0.75rem', listStyle: 'none', padding: 0 }}>
             {accounts.map((account) => (
-              <li key={account.id}>
-                <strong>{account.name}</strong> ({account.nature}) -{' '}
-                {formatCurrencyFromCents(account.currentBalanceCents)}{' '}
-                [{account.status === 'closed' ? 'Encerrada' : 'Ativa'}]{' '}
-                {account.closedAt ? `(encerrada em ${new Date(account.closedAt).toLocaleDateString('pt-BR')})` : ''}
-                <button type="button" onClick={() => startEdit(account)} style={{ marginLeft: '0.5rem' }}>
-                  Editar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => startAdjust(account)}
-                  style={{ marginLeft: '0.5rem' }}
-                  disabled={account.status === 'closed'}
+              <li
+                key={account.id}
+                style={{
+                  border: account.status === 'active' ? '1px solid #d7d7d7' : '1px solid #e4e4e4',
+                  background: account.status === 'active' ? '#ffffff' : '#f7f7f7',
+                  borderRadius: 8,
+                  padding: '0.75rem',
+                  display: 'grid',
+                  gap: '0.35rem',
+                }}
+              >
+                <strong style={{ fontSize: '0.95rem' }}>{account.name}</strong>
+                <span
+                  style={{
+                    textTransform: 'capitalize',
+                    color: account.status === 'active' ? '#5f5f5f' : '#8a8a8a',
+                    fontWeight: 600,
+                  }}
                 >
-                  Ajustar saldo
-                </button>
-                {account.status === 'active' ? (
-                  <button
-                    type="button"
-                    onClick={() => void handleCloseAccount(account)}
-                    style={{ marginLeft: '0.5rem' }}
-                    disabled={isSaving}
-                  >
-                    Encerrar conta
-                  </button>
+                  {account.nature === 'asset' ? 'ativo' : 'passivo'} •{' '}
+                  {account.status === 'closed' ? 'encerrada' : 'ativa'}
+                </span>
+                <strong style={{ color: '#2b2b2b' }}>
+                  {formatCurrencyFromCents(account.currentBalanceCents)}
+                </strong>
+                {account.closedAt ? (
+                  <span style={{ color: '#666' }}>
+                    Encerrada em {new Date(account.closedAt).toLocaleDateString('pt-BR')}
+                  </span>
                 ) : null}
-                <button
-                  type="button"
-                  onClick={() => void handleDeleteAccount(account)}
-                  style={{ marginLeft: '0.5rem' }}
-                  disabled={isSaving}
-                >
-                  Excluir
-                </button>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.2rem' }}>
+                  <button type="button" onClick={() => startEdit(account)}>
+                    Editar
+                  </button>
+                  <details>
+                    <summary style={{ cursor: 'pointer' }}>Ações</summary>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gap: '0.35rem',
+                        marginTop: '0.4rem',
+                        paddingLeft: '0.15rem',
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => startAdjust(account)}
+                        disabled={account.status === 'closed'}
+                      >
+                        Ajustar saldo
+                      </button>
+                      {account.status === 'active' ? (
+                        <button
+                          type="button"
+                          onClick={() => void handleCloseAccount(account)}
+                          disabled={isSaving}
+                        >
+                          Encerrar conta
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => void handleDeleteAccount(account)}
+                        disabled={isSaving}
+                      >
+                        Excluir
+                      </button>
+                    </div>
+                  </details>
+                </div>
               </li>
             ))}
           </ul>

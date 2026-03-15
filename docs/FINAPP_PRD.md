@@ -263,6 +263,7 @@ Estrutura obrigatória:
 4. ações do item devem aparecer como CTAs contextuais no próprio card
 5. evitar poluição visual com excesso de botões e blocos técnicos misturados à listagem principal
 6. informações técnicas ou secundárias devem ficar em área separada, expansível ou em tela/bloco próprio
+7. quando um item possuir alta densidade de ações, priorizar até duas ações visíveis e agrupar as demais em menu contextual por item (ex.: botão `Ações`)
 
 Diretriz de referência:
 

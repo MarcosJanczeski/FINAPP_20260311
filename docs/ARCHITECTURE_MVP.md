@@ -327,6 +327,7 @@ c. cada card deve conter:
    - metadados essenciais
    - status visual
    - CTAs contextuais do item
+   - em cenários com muitas ações, aplicar progressive disclosure: CTAs prioritários visíveis + menu contextual para ações secundárias/destrutivas
 d. blocos técnicos ou complementares (ex.: extrato detalhado, lançamentos relacionados, detalhes contábeis) não devem competir visualmente com a listagem principal e devem aparecer em área separada
 e. componentes de card e CTA devem ser reutilizáveis entre módulos para manter consistência
 
