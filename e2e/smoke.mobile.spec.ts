@@ -10,7 +10,7 @@ const TEST_FILE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(TEST_FILE_DIR, '..');
 const DEFAULT_FIXTURE_PATH = path.resolve(PROJECT_ROOT, FIXTURE_RELATIVE_PATH);
 
-type SmokeMode = 'fresh' | 'fixture';
+type SmokeMode = 'fresh' | 'fixture' | 'snapshot';
 
 interface SmokeFixture {
   version: number;
@@ -23,8 +23,21 @@ interface SmokeFixture {
   records: Record<string, unknown>;
 }
 
+interface LocalStorageSnapshot {
+  version: number;
+  capturedAt: string;
+  origin: string;
+  storage: Record<string, string>;
+}
+
 function getSmokeMode(): SmokeMode {
-  return process.env.SMOKE_MODE === 'fixture' ? 'fixture' : 'fresh';
+  if (process.env.SMOKE_MODE === 'fixture') {
+    return 'fixture';
+  }
+  if (process.env.SMOKE_MODE === 'snapshot') {
+    return 'snapshot';
+  }
+  return 'fresh';
 }
 
 async function loadFixture(fixturePath: string): Promise<SmokeFixture> {
@@ -46,6 +59,17 @@ async function ensureFixtureDirectory(fixturePath: string): Promise<void> {
   await fs.mkdir(path.dirname(fixturePath), { recursive: true });
 }
 
+async function loadLocalStorageSnapshot(snapshotPath: string): Promise<LocalStorageSnapshot> {
+  const raw = await fs.readFile(snapshotPath, 'utf-8');
+  const parsed = JSON.parse(raw) as LocalStorageSnapshot;
+
+  if (!parsed || typeof parsed.storage !== 'object') {
+    throw new Error(`Snapshot localStorage invalido em ${snapshotPath}.`);
+  }
+
+  return parsed;
+}
+
 test('smoke mobile: reset/fixture e fluxo critico ate confirmacao e liquidacao', async ({
   page,
 }) => {
@@ -53,6 +77,9 @@ test('smoke mobile: reset/fixture e fluxo critico ate confirmacao e liquidacao',
   const fixturePath = process.env.SMOKE_FIXTURE_PATH
     ? path.resolve(PROJECT_ROOT, process.env.SMOKE_FIXTURE_PATH)
     : DEFAULT_FIXTURE_PATH;
+  const snapshotPath = process.env.SMOKE_SNAPSHOT_PATH
+    ? path.resolve(PROJECT_ROOT, process.env.SMOKE_SNAPSHOT_PATH)
+    : path.resolve(PROJECT_ROOT, 'dev-snapshots/localStorage.initial.json');
   const captureFixturePath = process.env.SMOKE_CAPTURE_FIXTURE_PATH
     ? path.resolve(PROJECT_ROOT, process.env.SMOKE_CAPTURE_FIXTURE_PATH)
     : null;
@@ -93,6 +120,23 @@ test('smoke mobile: reset/fixture e fluxo critico ate confirmacao e liquidacao',
       recurrenceDescription: fixture.scenario.recurrenceDescription,
     });
 
+    return;
+  }
+
+  if (mode === 'snapshot') {
+    const snapshot = await loadLocalStorageSnapshot(snapshotPath);
+    const entries = Object.entries(snapshot.storage);
+
+    await page.addInitScript((snapshotEntries: Array<[string, string]>) => {
+      window.localStorage.clear();
+      snapshotEntries.forEach(([key, value]) => {
+        window.localStorage.setItem(key, value);
+      });
+    }, entries);
+
+    await page.goto('/projection');
+    await expect(page.getByRole('heading', { name: 'Projecao', exact: true })).toBeVisible();
+    await runProjectionSnapshotAssertions({ page });
     return;
   }
 
@@ -254,4 +298,62 @@ async function runProjectionConfirmAndSettlementAssertions(params: {
   await expect(
     page.getByRole('heading', { name: 'Resumo de saldo projetado de disponibilidades' }),
   ).toBeVisible();
+}
+
+async function runProjectionSnapshotAssertions(params: { page: Page }): Promise<void> {
+  const { page } = params;
+
+  await expect(
+    page.getByRole('heading', { name: 'Resumo de saldo projetado de disponibilidades' }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Atualizar eventos automaticos' }).click();
+
+  const forecastRow = page
+    .locator('li')
+    .filter({ hasText: 'previsto • recorrência' })
+    .filter({ has: page.getByRole('button', { name: 'Confirmar recorrencia' }) })
+    .first();
+
+  await expect(forecastRow).toBeVisible();
+  const recurrenceDescription = (await forecastRow.locator('span').nth(1).innerText()).trim();
+
+  await forecastRow.getByRole('button', { name: 'Confirmar recorrencia' }).click();
+  await expect(page.getByRole('heading', { name: 'Confirmar recorrencia prevista' })).toBeVisible();
+  const today = new Date();
+  const todayInput = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(
+    today.getDate(),
+  ).padStart(2, '0')}`;
+  await page.getByLabel('Data do fato/documento').fill(todayInput);
+  await page.getByLabel('Data de vencimento').fill(todayInput);
+  await page.getByRole('button', { name: 'Confirmar compromisso' }).click();
+  await expect(page.getByText('Recorrencia confirmada como compromisso com sucesso.')).toBeVisible();
+
+  const confirmedRow = page
+    .locator('li')
+    .filter({ hasText: recurrenceDescription })
+    .filter({ hasText: 'confirmado • recorrência' })
+    .first();
+  await expect(confirmedRow).toBeVisible();
+
+  const settleReceived = confirmedRow.getByRole('button', { name: 'Marcar como recebido' });
+  const settlePaid = confirmedRow.getByRole('button', { name: 'Marcar como pago' });
+  if ((await settleReceived.count()) > 0) {
+    await settleReceived.click();
+  } else {
+    await settlePaid.click();
+  }
+
+  await expect(page.getByRole('heading', { name: 'Liquidar compromisso confirmado' })).toBeVisible();
+  await page.locator('#settlement-account').selectOption({ index: 1 });
+  await page.getByRole('button', { name: 'Confirmar liquidacao' }).click();
+  await expect(page.getByText('Compromisso liquidado e registrado na contabilidade com sucesso.')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Atualizar eventos automaticos' }).click();
+  const settledRow = page
+    .locator('li')
+    .filter({ hasText: recurrenceDescription })
+    .filter({ hasText: 'realizado • recorrência' })
+    .first();
+  await expect(settledRow.getByText('realizado • recorrência')).toBeVisible();
+  await expect(settledRow.getByRole('button', { name: 'Confirmar recorrencia' })).toHaveCount(0);
 }
