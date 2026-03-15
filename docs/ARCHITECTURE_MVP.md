@@ -575,6 +575,7 @@ Estados/transições mínimas de `PlanningEvent`:
 * realização deve gerar baixa/liquidação contábil correspondente
 * cancelamento permitido em `previsto` e `confirmado`
 * reversão de confirmação deve ocorrer por estorno/compensação, sem apagar histórico
+* desativação de recorrência deve cancelar apenas previsões `active`; itens já confirmados/realizados devem permanecer preservados no fluxo operacional e contábil
 * na reversão de confirmação, o estorno deve usar a mesma data contábil (`date`) do lançamento original; `createdAt` registra a data/hora real da execução e `reversalOf` referencia o lançamento original
 * `posted` pode existir como detalhe técnico interno, sem substituir estados de negócio
 

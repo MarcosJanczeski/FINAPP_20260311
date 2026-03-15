@@ -111,7 +111,7 @@ export class SyncPlanningEventsUseCase {
         event.sourceType !== 'manual' &&
         event.sourceEventKey &&
         !seenKeys.has(event.sourceEventKey) &&
-        (event.status === 'active' || event.status === 'confirmed'),
+        event.status === 'active',
     );
 
     for (const stale of staleAutoEvents) {

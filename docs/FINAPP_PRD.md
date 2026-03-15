@@ -828,6 +828,7 @@ Transições mínimas:
 * `confirmado_agendado` -> `realizado` (liquidação contábil em etapa posterior)
 * `previsto` -> `cancelado`
 * `confirmado_agendado` -> `cancelado` por estorno/compensação, sem apagar histórico
+* ao desativar uma recorrência, somente previsões `active` vinculadas podem ser canceladas; eventos já confirmados/realizados permanecem como compromisso/histórico e não devem ser reabertos automaticamente
 * na reversão de confirmação, o estorno deve usar a mesma data contábil (`date`) do lançamento original; `createdAt` registra a data/hora real da execução e `reversalOf` referencia o lançamento original
 
 Status técnico atual da projeção (MVP):
