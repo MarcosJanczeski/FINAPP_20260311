@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import type { Account, AccountNature, AccountType } from '../../domain/entities/Account';
+import type { AccountNature, AccountType } from '../../domain/entities/Account';
+import type { AccountListItemDTO } from '../../application/dto/AccountSetupDTO';
 import type { LedgerAccount } from '../../domain/entities/LedgerAccount';
 import type { LedgerEntry } from '../../domain/entities/LedgerEntry';
+import type { AccountAvailabilityStatementDTO } from '../../application/use-cases/GetAccountAvailabilityStatementUseCase';
 import { ROUTES } from '../../shared/constants/routes';
 import { RoutePlaceholder } from '../components/RoutePlaceholder';
 import { useAppContainer } from '../hooks/useAppContainer';
@@ -20,14 +22,20 @@ const ACCOUNT_TYPE_OPTIONS: { value: AccountType; label: string }[] = [
 
 type ActiveForm = 'none' | 'create' | 'edit' | 'adjust';
 
+function isAvailabilitySetup(type: AccountType, nature: AccountNature): boolean {
+  return nature === 'asset' && (type === 'cash' || type === 'checking' || type === 'digital');
+}
+
 export function AccountsPage() {
   const { session } = useAuth();
   const container = useAppContainer();
 
   const [controlCenterId, setControlCenterId] = useState<string | null>(null);
-  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accounts, setAccounts] = useState<AccountListItemDTO[]>([]);
   const [ledgerAccounts, setLedgerAccounts] = useState<LedgerAccount[]>([]);
   const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([]);
+  const [availabilityStatement, setAvailabilityStatement] =
+    useState<AccountAvailabilityStatementDTO | null>(null);
 
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [activeForm, setActiveForm] = useState<ActiveForm>('none');
@@ -58,6 +66,7 @@ export function AccountsPage() {
     () => ledgerAccounts.filter((account) => account.kind === nature),
     [ledgerAccounts, nature],
   );
+  const isAvailabilityCreateFlow = useMemo(() => isAvailabilitySetup(type, nature), [type, nature]);
 
   useEffect(() => {
     if (!availableLedgerAccounts.length) {
@@ -131,10 +140,53 @@ export function AccountsPage() {
     }
   };
 
+  const refreshAvailabilityStatement = async () => {
+    if (!controlCenterId || !selectedAccountId) {
+      setAvailabilityStatement(null);
+      return;
+    }
+
+    const statement = await container.useCases.getAccountAvailabilityStatement.execute({
+      controlCenterId,
+      accountId: selectedAccountId,
+    });
+    setAvailabilityStatement(statement);
+  };
+
   const clearMessages = () => {
     setError(null);
     setSuccess(null);
   };
+
+  useEffect(() => {
+    if (!controlCenterId || !selectedAccountId) {
+      setAvailabilityStatement(null);
+      return;
+    }
+
+    let mounted = true;
+    (async () => {
+      try {
+        const statement = await container.useCases.getAccountAvailabilityStatement.execute({
+          controlCenterId,
+          accountId: selectedAccountId,
+        });
+        if (mounted) {
+          setAvailabilityStatement(statement);
+        }
+      } catch (currentError) {
+        if (mounted) {
+          setError(
+            currentError instanceof Error ? currentError.message : 'Falha ao carregar extrato da conta.',
+          );
+        }
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [container, controlCenterId, selectedAccountId]);
 
   const startCreate = () => {
     clearMessages();
@@ -145,7 +197,7 @@ export function AccountsPage() {
     setActiveForm('create');
   };
 
-  const startEdit = (account: Account) => {
+  const startEdit = (account: AccountListItemDTO) => {
     clearMessages();
     setSelectedAccountId(account.id);
     setEditName(account.name);
@@ -153,7 +205,7 @@ export function AccountsPage() {
     setActiveForm('edit');
   };
 
-  const startAdjust = (account: Account) => {
+  const startAdjust = (account: AccountListItemDTO) => {
     clearMessages();
     if (account.status === 'closed') {
       setError('Conta encerrada nao permite ajuste de saldo inicial.');
@@ -191,6 +243,7 @@ export function AccountsPage() {
       });
 
       await refreshData();
+      await refreshAvailabilityStatement();
       setSuccess('Conta cadastrada com sucesso.');
       closeForm();
     } catch (currentError) {
@@ -219,6 +272,7 @@ export function AccountsPage() {
       });
 
       await refreshData();
+      await refreshAvailabilityStatement();
       setSuccess('Dados da conta atualizados com sucesso.');
       closeForm();
     } catch (currentError) {
@@ -250,6 +304,7 @@ export function AccountsPage() {
       });
 
       await refreshData();
+      await refreshAvailabilityStatement();
       setSuccess('Ajuste contabil registrado com sucesso.');
       closeForm();
     } catch (currentError) {
@@ -259,7 +314,7 @@ export function AccountsPage() {
     }
   };
 
-  const handleDeleteAccount = async (account: Account) => {
+  const handleDeleteAccount = async (account: AccountListItemDTO) => {
     if (!controlCenterId) {
       setError('Centro de controle nao identificado.');
       return;
@@ -280,6 +335,7 @@ export function AccountsPage() {
       });
 
       await refreshData();
+      await refreshAvailabilityStatement();
 
       if (selectedAccountId === account.id) {
         setSelectedAccountId('');
@@ -294,7 +350,7 @@ export function AccountsPage() {
     }
   };
 
-  const handleCloseAccount = async (account: Account) => {
+  const handleCloseAccount = async (account: AccountListItemDTO) => {
     if (!controlCenterId) {
       setError('Centro de controle nao identificado.');
       return;
@@ -320,6 +376,7 @@ export function AccountsPage() {
       });
 
       await refreshData();
+      await refreshAvailabilityStatement();
 
       if (selectedAccountId === account.id && activeForm === 'adjust') {
         closeForm();
@@ -360,7 +417,7 @@ export function AccountsPage() {
             {accounts.map((account) => (
               <li key={account.id}>
                 <strong>{account.name}</strong> ({account.nature}) -{' '}
-                {formatCurrencyFromCents(account.openingBalanceCents)}{' '}
+                {formatCurrencyFromCents(account.currentBalanceCents)}{' '}
                 [{account.status === 'closed' ? 'Encerrada' : 'Ativa'}]{' '}
                 {account.closedAt ? `(encerrada em ${new Date(account.closedAt).toLocaleDateString('pt-BR')})` : ''}
                 <button type="button" onClick={() => startEdit(account)} style={{ marginLeft: '0.5rem' }}>
@@ -396,6 +453,65 @@ export function AccountsPage() {
             ))}
           </ul>
         )}
+      </section>
+
+      <section style={{ marginTop: '1rem' }}>
+        <h2>Extrato da conta (consulta)</h2>
+        {accounts.length > 0 ? (
+          <div style={{ display: 'grid', gap: '0.5rem', maxWidth: 420 }}>
+            <label htmlFor="statement-account-select">Conta para consulta</label>
+            <select
+              id="statement-account-select"
+              value={selectedAccountId}
+              onChange={(event) => setSelectedAccountId(event.target.value)}
+            >
+              {accounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
+        {!selectedAccount ? <p>Selecione uma conta para consultar o extrato.</p> : null}
+        {selectedAccount && !availabilityStatement ? <p>Carregando extrato...</p> : null}
+        {availabilityStatement ? (
+          <div style={{ display: 'grid', gap: '0.5rem' }}>
+            <p>
+              Conta: <strong>{availabilityStatement.account.name}</strong> ({availabilityStatement.account.nature})
+            </p>
+            <p>Base do saldo acumulado: somente lançamentos do LedgerEntry desta conta contábil vinculada.</p>
+            {availabilityStatement.lines.length === 0 ? (
+              <p>Nenhum movimento contábil encontrado para esta conta.</p>
+            ) : (
+              <ul style={{ display: 'grid', gap: '0.5rem', listStyle: 'none', padding: 0 }}>
+                {availabilityStatement.lines.map((line) => (
+                  <li
+                    key={`${line.ledgerEntryId}-${line.date}`}
+                    style={{
+                      border: '1px solid #d7d7d7',
+                      borderRadius: 8,
+                      padding: '0.65rem',
+                      display: 'grid',
+                      gap: '0.2rem',
+                    }}
+                  >
+                    <strong>{new Date(line.date).toLocaleDateString('pt-BR')}</strong>
+                    <span>{line.description}</span>
+                    <span>
+                      Movimento:{' '}
+                      {line.movementCents >= 0 ? '+' : '-'} {formatCurrencyFromCents(Math.abs(line.movementCents))}
+                    </span>
+                    <span>Saldo acumulado: {formatCurrencyFromCents(line.runningBalanceCents)}</span>
+                    <span style={{ color: '#555' }}>
+                      Ref: {line.referenceType} | {line.referenceId}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ) : null}
       </section>
 
       {activeForm === 'create' ? (
@@ -439,14 +555,27 @@ export function AccountsPage() {
               id="ledger-account"
               value={ledgerAccountId}
               onChange={(event) => setLedgerAccountId(event.target.value)}
-              required
+              required={!isAvailabilityCreateFlow}
+              disabled={isAvailabilityCreateFlow}
             >
-              {availableLedgerAccounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {account.code} - {account.name}
+              {isAvailabilityCreateFlow ? (
+                <option value="">
+                  Conta específica de disponibilidades será criada automaticamente
                 </option>
-              ))}
+              ) : (
+                availableLedgerAccounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.code} - {account.name}
+                  </option>
+                ))
+              )}
             </select>
+            {isAvailabilityCreateFlow ? (
+              <p style={{ margin: 0 }}>
+                Para contas de disponibilidades, o sistema cria e vincula automaticamente uma subconta
+                contábil específica.
+              </p>
+            ) : null}
 
             <label htmlFor="opening-balance">Saldo inicial</label>
             <CurrencyInput
@@ -456,7 +585,7 @@ export function AccountsPage() {
             />
 
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button type="submit" disabled={isSaving || !ledgerAccountId}>
+              <button type="submit" disabled={isSaving || (!ledgerAccountId && !isAvailabilityCreateFlow)}>
                 {isSaving ? 'Salvando...' : 'Salvar conta'}
               </button>
               <button type="button" onClick={closeForm} disabled={isSaving}>
