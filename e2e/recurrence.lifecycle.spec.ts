@@ -16,6 +16,7 @@ type DevBridgeAction =
   | 'settleRecurrencePlanningEvent'
   | 'reverseRecurrenceSettlement'
   | 'reverseRecurrenceConfirmation'
+  | 'getProjectionAvailabilitySummary'
   | 'listLedgerEntries';
 
 interface Session {
@@ -63,6 +64,16 @@ interface LedgerEntry {
   reversalOf?: string;
 }
 
+interface ProjectionSummary {
+  windowStart: string;
+  windowEnd: string;
+  baseBalanceCents: number;
+  projectedInflowsCents: number;
+  projectedOutflowsCents: number;
+  projectedFinalBalanceCents: number;
+  consideredEventsCount: number;
+}
+
 test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoes > cancelamento por periodo', async ({
   page,
 }) => {
@@ -78,6 +89,7 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
   const email = `lifecycle.${nonce}@finapp.local`;
   const password = '123456';
   const recurrenceDescription = `Recorrencia Lifecycle ${nonce}`;
+  const recurrenceSkipDescription = `Recorrencia Skip ${nonce}`;
 
   const user = await invokeBridge<{ id: string }>(page, 'signUp', { email, password });
   const session = await invokeBridge<Session | null>(page, 'getCurrentSession');
@@ -115,16 +127,32 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
     amountCents: 12500,
     status: 'active',
   });
+  const recurrenceSkip = await invokeBridge<Recurrence>(page, 'upsertRecurrence', {
+    controlCenterId: controlCenter.id,
+    description: recurrenceSkipDescription,
+    dayOfMonth: todayDay,
+    direction: 'outflow',
+    amountCents: 21000,
+    status: 'active',
+  });
 
   await invokeBridge(page, 'syncPlanningEvents', { controlCenterId: controlCenter.id });
   let events = await loadRecurrenceEvents(page, controlCenter.id, recurrence.id);
   let event = pickCurrentPeriodEvent(events, recurrenceDescription);
+  const currentPeriodKey = event.sourceEventKey;
 
   // 1) previsto
   expect(event.type).toBe('previsto_recorrencia');
   expect(event.status).toBe('active');
   expect(await countActiveBaseLinks(page, controlCenter.id, event, 'recognition')).toBe(0);
   expect(await countActiveBaseLinks(page, controlCenter.id, event, 'settlement')).toBe(0);
+  await assertProjectionForCurrentPeriod(
+    page,
+    controlCenter.id,
+    currentPeriodKey,
+    'previsto',
+    true,
+  );
 
   // 2) confirmação
   await invokeBridge(page, 'confirmRecurrencePlanningEvent', {
@@ -143,6 +171,13 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
   expect(await countActiveBaseLinks(page, controlCenter.id, event, 'recognition')).toBe(1);
   expect(await countActiveBaseLinks(page, controlCenter.id, event, 'settlement')).toBe(0);
   await assertNoDuplicateActiveSettlements(page, controlCenter.id, event);
+  await assertProjectionForCurrentPeriod(
+    page,
+    controlCenter.id,
+    currentPeriodKey,
+    'confirmado',
+    true,
+  );
 
   // 3) liquidação
   await invokeBridge(page, 'settleRecurrencePlanningEvent', {
@@ -160,6 +195,13 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
   expect(await countActiveBaseLinks(page, controlCenter.id, event, 'recognition')).toBe(1);
   expect(await countActiveBaseLinks(page, controlCenter.id, event, 'settlement')).toBe(1);
   await assertNoDuplicateActiveSettlements(page, controlCenter.id, event);
+  await assertProjectionForCurrentPeriod(
+    page,
+    controlCenter.id,
+    currentPeriodKey,
+    'realizado',
+    true,
+  );
 
   // 4) estorno de liquidação -> confirmado
   await invokeBridge(page, 'reverseRecurrenceSettlement', {
@@ -174,6 +216,30 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
   expect(await countActiveBaseLinks(page, controlCenter.id, event, 'settlement')).toBe(0);
   expect(countLinks(event, 'settlement_reversal')).toBeGreaterThan(0);
   await assertAllReversalsHaveSource(page, controlCenter.id, event);
+  const ledgerEntriesBeforeSecondReverse = await invokeBridge<LedgerEntry[]>(page, 'listLedgerEntries', {
+    controlCenterId: controlCenter.id,
+  });
+  const linksSnapshotBeforeSecondReverse = JSON.stringify(event.ledgerLinks);
+  const secondReverseSettlementError = await expectBridgeFailure(page, 'reverseRecurrenceSettlement', {
+    id: event.id,
+    controlCenterId: controlCenter.id,
+    reversedByUserId: user.id,
+  });
+  expect(secondReverseSettlementError).toContain('Nao existe liquidacao ativa para estorno.');
+  const ledgerEntriesAfterSecondReverse = await invokeBridge<LedgerEntry[]>(page, 'listLedgerEntries', {
+    controlCenterId: controlCenter.id,
+  });
+  expect(ledgerEntriesAfterSecondReverse.length).toBe(ledgerEntriesBeforeSecondReverse.length);
+  events = await loadRecurrenceEvents(page, controlCenter.id, recurrence.id);
+  event = findById(events, event.id);
+  expect(JSON.stringify(event.ledgerLinks)).toBe(linksSnapshotBeforeSecondReverse);
+  await assertProjectionForCurrentPeriod(
+    page,
+    controlCenter.id,
+    currentPeriodKey,
+    'confirmado',
+    true,
+  );
 
   // 5) estorno de confirmação -> previsto
   await invokeBridge(page, 'reverseRecurrenceConfirmation', {
@@ -190,6 +256,22 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
   expect(await countActiveBaseLinks(page, controlCenter.id, event, 'settlement')).toBe(0);
   expect(countLinks(event, 'recognition_reversal')).toBeGreaterThan(0);
   await assertAllReversalsHaveSource(page, controlCenter.id, event);
+  const secondReverseRecognitionError = await expectBridgeFailure(page, 'reverseRecurrenceConfirmation', {
+    id: event.id,
+    controlCenterId: controlCenter.id,
+    reversedByUserId: user.id,
+    targetState: 'forecast',
+  });
+  expect(secondReverseRecognitionError).toContain(
+    'Somente recorrencia confirmada ou realizada pode ser ajustada neste fluxo.',
+  );
+  await assertProjectionForCurrentPeriod(
+    page,
+    controlCenter.id,
+    currentPeriodKey,
+    'previsto',
+    true,
+  );
 
   // 6) nova confirmação
   await invokeBridge(page, 'confirmRecurrencePlanningEvent', {
@@ -205,6 +287,13 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
   event = findById(events, event.id);
   expect(event.status).toBe('confirmed');
   expect(await countActiveBaseLinks(page, controlCenter.id, event, 'recognition')).toBe(1);
+  await assertProjectionForCurrentPeriod(
+    page,
+    controlCenter.id,
+    currentPeriodKey,
+    'confirmado',
+    true,
+  );
 
   // 7) nova liquidação
   await invokeBridge(page, 'settleRecurrencePlanningEvent', {
@@ -219,6 +308,13 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
   event = findById(events, event.id);
   expect(event.status).toBe('posted');
   expect(await countActiveBaseLinks(page, controlCenter.id, event, 'settlement')).toBe(1);
+  await assertProjectionForCurrentPeriod(
+    page,
+    controlCenter.id,
+    currentPeriodKey,
+    'realizado',
+    true,
+  );
 
   // 8) cancelamento da ocorrência realizada via reversões em cadeia
   await invokeBridge(page, 'reverseRecurrenceConfirmation', {
@@ -235,12 +331,14 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
   expect(countLinks(event, 'settlement_reversal')).toBeGreaterThan(1);
   expect(countLinks(event, 'recognition_reversal')).toBeGreaterThan(1);
   await assertAllReversalsHaveSource(page, controlCenter.id, event);
+  await assertProjectionForCurrentPeriod(page, controlCenter.id, currentPeriodKey, 'cancelado', false);
 
   // 9) períodos futuros da recorrência continuam existindo
   await invokeBridge(page, 'syncPlanningEvents', { controlCenterId: controlCenter.id });
   events = await loadRecurrenceEvents(page, controlCenter.id, recurrence.id);
   const futureEvents = events.filter((item) => item.id !== event.id && item.status === 'active');
   expect(futureEvents.length).toBeGreaterThan(0);
+  await assertProjectionFutureContinuity(page, controlCenter.id, recurrence.id, currentPeriodKey);
 
   // 10) desativação da recorrência: sem reabrir histórico confirmado/realizado e sem dupla contagem ativa
   await invokeBridge(page, 'upsertRecurrence', {
@@ -258,10 +356,86 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
   const activeAfterDeactivation = events.filter((item) => item.status === 'active');
   expect(activeAfterDeactivation.length).toBe(0);
   expect(events.some((item) => item.id === event.id && item.status === 'canceled')).toBeTruthy();
+  await assertProjectionForCurrentPeriod(page, controlCenter.id, currentPeriodKey, 'cancelado', false);
 
   const recurrences = await invokeBridge<Recurrence[]>(page, 'listRecurrences', controlCenter.id);
   const storedRecurrence = recurrences.find((item) => item.id === recurrence.id);
   expect(storedRecurrence?.status).toBe('inactive');
+
+  // Edge case 2) realizado -> reverse settlement -> confirmado -> cancel occurrence (period skip)
+  await invokeBridge(page, 'syncPlanningEvents', { controlCenterId: controlCenter.id });
+  let skipEvents = await loadRecurrenceEvents(page, controlCenter.id, recurrenceSkip.id);
+  let skipEvent = pickCurrentPeriodEvent(skipEvents, recurrenceSkipDescription);
+  const skipCurrentPeriodKey = skipEvent.sourceEventKey;
+  expect(skipCurrentPeriodKey).toBeTruthy();
+
+  await invokeBridge(page, 'confirmRecurrencePlanningEvent', {
+    id: skipEvent.id,
+    controlCenterId: controlCenter.id,
+    confirmedByUserId: user.id,
+    documentDate: todayIsoNoon,
+    dueDate: todayIsoNoon,
+    plannedSettlementDate: todayIsoNoon,
+    confirmedAmountCents: skipEvent.amountCents,
+  });
+  skipEvents = await loadRecurrenceEvents(page, controlCenter.id, recurrenceSkip.id);
+  skipEvent = findById(skipEvents, skipEvent.id);
+  expect(skipEvent.status).toBe('confirmed');
+
+  await invokeBridge(page, 'settleRecurrencePlanningEvent', {
+    id: skipEvent.id,
+    controlCenterId: controlCenter.id,
+    settlementDate: todayIsoNoon,
+    settlementAmountCents: skipEvent.amountCents,
+    settlementAccountId: account.id,
+    settledByUserId: user.id,
+  });
+  skipEvents = await loadRecurrenceEvents(page, controlCenter.id, recurrenceSkip.id);
+  skipEvent = findById(skipEvents, skipEvent.id);
+  expect(skipEvent.status).toBe('posted');
+
+  await invokeBridge(page, 'reverseRecurrenceSettlement', {
+    id: skipEvent.id,
+    controlCenterId: controlCenter.id,
+    reversedByUserId: user.id,
+  });
+  skipEvents = await loadRecurrenceEvents(page, controlCenter.id, recurrenceSkip.id);
+  skipEvent = findById(skipEvents, skipEvent.id);
+  expect(skipEvent.status).toBe('confirmed');
+  await assertProjectionForCurrentPeriod(
+    page,
+    controlCenter.id,
+    skipCurrentPeriodKey,
+    'confirmado',
+    true,
+  );
+
+  await invokeBridge(page, 'reverseRecurrenceConfirmation', {
+    id: skipEvent.id,
+    controlCenterId: controlCenter.id,
+    reversedByUserId: user.id,
+    targetState: 'canceled',
+  });
+  skipEvents = await loadRecurrenceEvents(page, controlCenter.id, recurrenceSkip.id);
+  skipEvent = findById(skipEvents, skipEvent.id);
+  expect(skipEvent.status).toBe('canceled');
+  expect(countLinks(skipEvent, 'recognition')).toBeGreaterThan(0);
+  expect(countLinks(skipEvent, 'settlement')).toBeGreaterThan(0);
+  expect(countLinks(skipEvent, 'settlement_reversal')).toBeGreaterThan(0);
+  expect(countLinks(skipEvent, 'recognition_reversal')).toBeGreaterThan(0);
+  await assertAllReversalsHaveSource(page, controlCenter.id, skipEvent);
+  await assertProjectionForCurrentPeriod(
+    page,
+    controlCenter.id,
+    skipCurrentPeriodKey,
+    'cancelado',
+    false,
+  );
+  await assertProjectionFutureContinuity(page, controlCenter.id, recurrenceSkip.id, skipCurrentPeriodKey);
+
+  const recurrencesAfterSkip = await invokeBridge<Recurrence[]>(page, 'listRecurrences', controlCenter.id);
+  const storedRecurrenceSkip = recurrencesAfterSkip.find((item) => item.id === recurrenceSkip.id);
+  expect(storedRecurrenceSkip?.status).toBe('active');
 });
 
 async function invokeBridge<T>(page: import('@playwright/test').Page, action: DevBridgeAction, payload?: unknown): Promise<T> {
@@ -289,6 +463,21 @@ async function invokeBridge<T>(page: import('@playwright/test').Page, action: De
   }
 
   return result.data as T;
+}
+
+async function expectBridgeFailure(
+  page: import('@playwright/test').Page,
+  action: DevBridgeAction,
+  payload?: unknown,
+): Promise<string> {
+  try {
+    await invokeBridge(page, action, payload);
+    throw new Error(`Esperava falha no bridge (${action}), mas a execução teve sucesso.`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Falha desconhecida';
+    expect(message).toContain(`Falha no bridge (${action}):`);
+    return message;
+  }
 }
 
 async function loadRecurrenceEvents(
@@ -386,4 +575,99 @@ function toIsoNoonUtc(date: Date): string {
   const month = String(date.getUTCMonth() + 1).padStart(2, '0');
   const day = String(date.getUTCDate()).padStart(2, '0');
   return `${year}-${month}-${day}T12:00:00.000Z`;
+}
+
+async function assertProjectionForCurrentPeriod(
+  page: import('@playwright/test').Page,
+  controlCenterId: string,
+  sourceEventKey: string | null,
+  expectedState: 'previsto' | 'confirmado' | 'realizado' | 'cancelado',
+  shouldBeVisibleInOperationalList: boolean,
+): Promise<void> {
+  if (!sourceEventKey) {
+    throw new Error('sourceEventKey ausente para validação da projeção.');
+  }
+
+  const allEvents = await invokeBridge<PlanningEvent[]>(page, 'listPlanningEvents', controlCenterId);
+  const currentPeriodEvents = allEvents.filter((event) => event.sourceEventKey === sourceEventKey);
+  const operationalList = currentPeriodEvents.filter((event) => event.status !== 'canceled');
+
+  if (shouldBeVisibleInOperationalList) {
+    expect(operationalList.length).toBe(1);
+    const current = operationalList[0];
+    expect(functionalState(current)).toBe(expectedState);
+  } else {
+    expect(operationalList.length).toBe(0);
+  }
+
+  await assertProjectionAggregates(page, controlCenterId, allEvents);
+}
+
+async function assertProjectionFutureContinuity(
+  page: import('@playwright/test').Page,
+  controlCenterId: string,
+  recurrenceId: string,
+  currentPeriodKey: string | null,
+): Promise<void> {
+  const allEvents = await invokeBridge<PlanningEvent[]>(page, 'listPlanningEvents', controlCenterId);
+  const futureOperational = allEvents.filter(
+    (event) =>
+      event.sourceId === recurrenceId &&
+      event.sourceEventKey !== currentPeriodKey &&
+      event.status !== 'canceled',
+  );
+  expect(futureOperational.length).toBeGreaterThan(0);
+  await assertProjectionAggregates(page, controlCenterId, allEvents);
+}
+
+async function assertProjectionAggregates(
+  page: import('@playwright/test').Page,
+  controlCenterId: string,
+  allEvents: PlanningEvent[],
+): Promise<void> {
+  const summary = await invokeBridge<ProjectionSummary>(
+    page,
+    'getProjectionAvailabilitySummary',
+    controlCenterId,
+  );
+
+  const windowStart = new Date(summary.windowStart);
+  const windowEnd = new Date(summary.windowEnd);
+  const considered = allEvents.filter((event) => {
+    if (event.status !== 'active' && event.status !== 'confirmed') {
+      return false;
+    }
+    if (event.type === 'realizado') {
+      return false;
+    }
+    const dueDate = new Date(event.dueDate);
+    return dueDate >= windowStart && dueDate <= windowEnd;
+  });
+
+  const inflows = considered
+    .filter((event) => event.direction === 'inflow')
+    .reduce((sum, event) => sum + event.amountCents, 0);
+  const outflows = considered
+    .filter((event) => event.direction === 'outflow')
+    .reduce((sum, event) => sum + event.amountCents, 0);
+
+  expect(summary.consideredEventsCount).toBe(considered.length);
+  expect(summary.projectedInflowsCents).toBe(inflows);
+  expect(summary.projectedOutflowsCents).toBe(outflows);
+  expect(summary.projectedFinalBalanceCents).toBe(
+    summary.baseBalanceCents + summary.projectedInflowsCents - summary.projectedOutflowsCents,
+  );
+}
+
+function functionalState(event: PlanningEvent): 'previsto' | 'confirmado' | 'realizado' | 'cancelado' {
+  if (event.status === 'canceled') {
+    return 'cancelado';
+  }
+  if (event.type === 'realizado') {
+    return 'realizado';
+  }
+  if (event.type === 'confirmado_agendado') {
+    return 'confirmado';
+  }
+  return 'previsto';
 }
