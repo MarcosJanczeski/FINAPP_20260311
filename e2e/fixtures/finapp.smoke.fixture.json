@@ -1,0 +1,394 @@
+{
+  "version": 1,
+  "namespace": "finapp.mvp.v1",
+  "capturedAt": "2026-03-15T15:56:15.472Z",
+  "scenario": {
+    "accountName": "Conta Fixture Disponibilidade",
+    "recurrenceDescription": "Recorrencia Fixture Entrada"
+  },
+  "records": {
+    "accounts": [
+      {
+        "id": "f5145730-5397-4e9b-bcf8-e67d44265dde",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "name": "Conta Fixture Disponibilidade",
+        "type": "cash",
+        "nature": "asset",
+        "ledgerAccountId": "a4ebb4e4-4d21-4f0a-86b6-3bc854c65303",
+        "openingBalanceCents": 150000,
+        "status": "active",
+        "closedAt": null,
+        "createdAt": "2026-03-15T15:56:14.980Z",
+        "updatedAt": "2026-03-15T15:56:14.980Z"
+      }
+    ],
+    "people": [
+      {
+        "id": "3303b9a0-653e-44d7-a1d7-edfe6cc46fdb",
+        "userId": "b9e2e350-501a-4595-86b6-4510b85c04f1",
+        "name": "Usuario Smoke",
+        "personType": "individual",
+        "phone": "67999999999",
+        "createdAt": "2026-03-15T15:56:14.680Z"
+      }
+    ],
+    "ledger-accounts": [
+      {
+        "id": "6f4b4f8a-3235-424c-8887-195d4aa007b3",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "code": "ATIVO",
+        "name": "ATIVO",
+        "kind": "asset",
+        "isSystem": true,
+        "createdAt": "2026-03-15T15:56:14.828Z"
+      },
+      {
+        "id": "6449d2d0-d83e-4187-bf86-3dd735f601ee",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "code": "ATIVO",
+        "name": "ATIVO",
+        "kind": "asset",
+        "isSystem": true,
+        "createdAt": "2026-03-15T15:56:14.828Z"
+      },
+      {
+        "id": "2ac9d453-4fc5-413a-8c6f-abba2eb440b8",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "code": "PASSIVO",
+        "name": "PASSIVO",
+        "kind": "liability",
+        "isSystem": true,
+        "createdAt": "2026-03-15T15:56:14.828Z"
+      },
+      {
+        "id": "761a1672-aafa-40c8-a54e-f01d11e1675a",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "code": "PASSIVO",
+        "name": "PASSIVO",
+        "kind": "liability",
+        "isSystem": true,
+        "createdAt": "2026-03-15T15:56:14.828Z"
+      },
+      {
+        "id": "00d0e894-0d40-4966-bb6e-c406a7ca33ac",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "code": "PATRIMONIO_LIQUIDO",
+        "name": "PATRIMONIO LIQUIDO",
+        "kind": "equity",
+        "isSystem": true,
+        "createdAt": "2026-03-15T15:56:14.828Z"
+      },
+      {
+        "id": "ffef8445-ed3f-4f53-b26b-c1c09f267190",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "code": "PATRIMONIO_LIQUIDO",
+        "name": "PATRIMONIO LIQUIDO",
+        "kind": "equity",
+        "isSystem": true,
+        "createdAt": "2026-03-15T15:56:14.828Z"
+      },
+      {
+        "id": "44f17300-7ba2-45d4-be15-82aec616c72e",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "code": "RECEITAS",
+        "name": "RECEITAS",
+        "kind": "revenue",
+        "isSystem": true,
+        "createdAt": "2026-03-15T15:56:14.828Z"
+      },
+      {
+        "id": "76863e58-947e-4ba2-8719-bd5a5232f12a",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "code": "RECEITAS",
+        "name": "RECEITAS",
+        "kind": "revenue",
+        "isSystem": true,
+        "createdAt": "2026-03-15T15:56:14.828Z"
+      },
+      {
+        "id": "e4d8254e-56e7-4d6c-bb7d-a19e56671fac",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "code": "DESPESAS",
+        "name": "DESPESAS",
+        "kind": "expense",
+        "isSystem": true,
+        "createdAt": "2026-03-15T15:56:14.828Z"
+      },
+      {
+        "id": "c8854be0-4f50-4637-9598-947e8a46876a",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "code": "DESPESAS",
+        "name": "DESPESAS",
+        "kind": "expense",
+        "isSystem": true,
+        "createdAt": "2026-03-15T15:56:14.828Z"
+      },
+      {
+        "id": "217815bd-cffb-437c-90e5-9895d2bd9082",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "code": "ATIVO:DISPONIBILIDADES",
+        "name": "Ativo - Disponibilidades",
+        "kind": "asset",
+        "isSystem": true,
+        "createdAt": "2026-03-15T15:56:14.828Z"
+      },
+      {
+        "id": "674498a8-86bf-48e0-90a7-91ec805be3fc",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "code": "ATIVO:DISPONIBILIDADES",
+        "name": "Ativo - Disponibilidades",
+        "kind": "asset",
+        "isSystem": true,
+        "createdAt": "2026-03-15T15:56:14.828Z"
+      },
+      {
+        "id": "594cd669-dd35-4c74-a83a-b07d46b1a095",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "code": "ATIVO:RECEBIVEIS",
+        "name": "Ativo - Recebiveis",
+        "kind": "asset",
+        "isSystem": true,
+        "createdAt": "2026-03-15T15:56:14.828Z"
+      },
+      {
+        "id": "0f42373a-439d-44e5-9f21-db2d89f9632e",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "code": "ATIVO:RECEBIVEIS",
+        "name": "Ativo - Recebiveis",
+        "kind": "asset",
+        "isSystem": true,
+        "createdAt": "2026-03-15T15:56:14.828Z"
+      },
+      {
+        "id": "0b5c0832-52b9-4aa3-9c46-b466fb0feb8b",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "code": "PASSIVO:OBRIGACOES",
+        "name": "Passivo - Obrigacoes",
+        "kind": "liability",
+        "isSystem": true,
+        "createdAt": "2026-03-15T15:56:14.828Z"
+      },
+      {
+        "id": "a6bd9920-2953-4f90-8e3d-4e4e5d3cf1cd",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "code": "PASSIVO:OBRIGACOES",
+        "name": "Passivo - Obrigacoes",
+        "kind": "liability",
+        "isSystem": true,
+        "createdAt": "2026-03-15T15:56:14.829Z"
+      },
+      {
+        "id": "00f86bd2-f318-44dd-865f-21482d579991",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "code": "PL:SALDOS_INICIAIS",
+        "name": "PL - Saldos Iniciais",
+        "kind": "equity",
+        "isSystem": true,
+        "createdAt": "2026-03-15T15:56:14.829Z"
+      },
+      {
+        "id": "1729208f-3fec-411c-81b0-c8a8c2264239",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "code": "PL:SALDOS_INICIAIS",
+        "name": "PL - Saldos Iniciais",
+        "kind": "equity",
+        "isSystem": true,
+        "createdAt": "2026-03-15T15:56:14.829Z"
+      },
+      {
+        "id": "29efab74-bad0-42c1-bf72-263d6f3068d7",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "code": "RECEITA:OPERACIONAL",
+        "name": "Receita - Operacional",
+        "kind": "revenue",
+        "isSystem": true,
+        "createdAt": "2026-03-15T15:56:14.829Z"
+      },
+      {
+        "id": "6319d9ee-1e4d-42ac-8a8c-f70b31447868",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "code": "RECEITA:OPERACIONAL",
+        "name": "Receita - Operacional",
+        "kind": "revenue",
+        "isSystem": true,
+        "createdAt": "2026-03-15T15:56:14.829Z"
+      },
+      {
+        "id": "e7788d87-7f2e-4c74-8e8d-cae184958213",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "code": "DESPESA:OPERACIONAL",
+        "name": "Despesa - Operacional",
+        "kind": "expense",
+        "isSystem": true,
+        "createdAt": "2026-03-15T15:56:14.829Z"
+      },
+      {
+        "id": "c6d3d0ce-938a-4ad5-9018-0eefbb9a95d0",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "code": "DESPESA:OPERACIONAL",
+        "name": "Despesa - Operacional",
+        "kind": "expense",
+        "isSystem": true,
+        "createdAt": "2026-03-15T15:56:14.829Z"
+      },
+      {
+        "id": "a4ebb4e4-4d21-4f0a-86b6-3bc854c65303",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "code": "ATIVO:DISPONIBILIDADES:CONTA_FIXTURE_DISPONIBIL_7AD11B",
+        "name": "Disponibilidades - Conta Fixture Disponibilidade",
+        "kind": "asset",
+        "isSystem": false,
+        "createdAt": "2026-03-15T15:56:14.978Z"
+      }
+    ],
+    "auth.session": {
+      "userId": "b9e2e350-501a-4595-86b6-4510b85c04f1"
+    },
+    "users": [
+      {
+        "id": "b9e2e350-501a-4595-86b6-4510b85c04f1",
+        "email": "smoke.fixture@finapp.local",
+        "password": "123456",
+        "createdAt": "2026-03-15T15:56:14.497Z",
+        "updatedAt": "2026-03-15T15:56:14.497Z"
+      }
+    ],
+    "planning-events": [
+      {
+        "id": "16fb9d89-595f-47bc-a10e-15475732b809",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "date": "2026-03-15T12:00:00.000Z",
+        "documentDate": "2026-03-15T12:00:00.000Z",
+        "dueDate": "2026-03-15T12:00:00.000Z",
+        "plannedSettlementDate": "2026-03-15T12:00:00.000Z",
+        "description": "Recorrencia Fixture Entrada",
+        "type": "previsto_recorrencia",
+        "status": "active",
+        "direction": "inflow",
+        "amountCents": 100000,
+        "sourceType": "recurrence",
+        "sourceId": "421cd18c-4ef6-461d-9d2a-1b351c6822e0",
+        "sourceEventKey": "recurrence:421cd18c-4ef6-461d-9d2a-1b351c6822e0:2026-03",
+        "ledgerLinks": [],
+        "postedLedgerEntryId": null,
+        "createdAt": "2026-03-15T15:56:15.313Z",
+        "updatedAt": "2026-03-15T15:56:15.462Z"
+      },
+      {
+        "id": "8a551a4a-015c-4020-b155-d0a54d676c29",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "date": "2026-04-15T12:00:00.000Z",
+        "documentDate": "2026-04-15T12:00:00.000Z",
+        "dueDate": "2026-04-15T12:00:00.000Z",
+        "plannedSettlementDate": "2026-04-15T12:00:00.000Z",
+        "description": "Recorrencia Fixture Entrada",
+        "type": "previsto_recorrencia",
+        "status": "active",
+        "direction": "inflow",
+        "amountCents": 100000,
+        "sourceType": "recurrence",
+        "sourceId": "421cd18c-4ef6-461d-9d2a-1b351c6822e0",
+        "sourceEventKey": "recurrence:421cd18c-4ef6-461d-9d2a-1b351c6822e0:2026-04",
+        "ledgerLinks": [],
+        "postedLedgerEntryId": null,
+        "createdAt": "2026-03-15T15:56:15.313Z",
+        "updatedAt": "2026-03-15T15:56:15.462Z"
+      },
+      {
+        "id": "a9eb3de3-0f33-4dde-8f91-4699a1d3067f",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "date": "2026-05-15T12:00:00.000Z",
+        "documentDate": "2026-05-15T12:00:00.000Z",
+        "dueDate": "2026-05-15T12:00:00.000Z",
+        "plannedSettlementDate": "2026-05-15T12:00:00.000Z",
+        "description": "Recorrencia Fixture Entrada",
+        "type": "previsto_recorrencia",
+        "status": "active",
+        "direction": "inflow",
+        "amountCents": 100000,
+        "sourceType": "recurrence",
+        "sourceId": "421cd18c-4ef6-461d-9d2a-1b351c6822e0",
+        "sourceEventKey": "recurrence:421cd18c-4ef6-461d-9d2a-1b351c6822e0:2026-05",
+        "ledgerLinks": [],
+        "postedLedgerEntryId": null,
+        "createdAt": "2026-03-15T15:56:15.313Z",
+        "updatedAt": "2026-03-15T15:56:15.462Z"
+      },
+      {
+        "id": "0c4e137a-13fb-4b27-ad4c-7463c93a6d50",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "date": "2026-06-15T12:00:00.000Z",
+        "documentDate": "2026-06-15T12:00:00.000Z",
+        "dueDate": "2026-06-15T12:00:00.000Z",
+        "plannedSettlementDate": "2026-06-15T12:00:00.000Z",
+        "description": "Recorrencia Fixture Entrada",
+        "type": "previsto_recorrencia",
+        "status": "active",
+        "direction": "inflow",
+        "amountCents": 100000,
+        "sourceType": "recurrence",
+        "sourceId": "421cd18c-4ef6-461d-9d2a-1b351c6822e0",
+        "sourceEventKey": "recurrence:421cd18c-4ef6-461d-9d2a-1b351c6822e0:2026-06",
+        "ledgerLinks": [],
+        "postedLedgerEntryId": null,
+        "createdAt": "2026-03-15T15:56:15.313Z",
+        "updatedAt": "2026-03-15T15:56:15.462Z"
+      }
+    ],
+    "recurrences": [
+      {
+        "id": "421cd18c-4ef6-461d-9d2a-1b351c6822e0",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "description": "Recorrencia Fixture Entrada",
+        "frequency": "monthly",
+        "dayOfMonth": 15,
+        "direction": "inflow",
+        "amountCents": 100000,
+        "status": "active",
+        "createdAt": "2026-03-15T15:56:15.312Z",
+        "updatedAt": "2026-03-15T15:56:15.312Z"
+      }
+    ],
+    "ledger-entries": [
+      {
+        "id": "864bfe89-c323-4cec-9c7b-03c223400459",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "date": "2026-03-15T15:56:14.980Z",
+        "description": "Saldo inicial - Conta Fixture Disponibilidade",
+        "referenceType": "account_opening",
+        "referenceId": "f5145730-5397-4e9b-bcf8-e67d44265dde",
+        "lines": [
+          {
+            "ledgerAccountId": "a4ebb4e4-4d21-4f0a-86b6-3bc854c65303",
+            "debitCents": 150000,
+            "creditCents": 0
+          },
+          {
+            "ledgerAccountId": "00f86bd2-f318-44dd-865f-21482d579991",
+            "debitCents": 0,
+            "creditCents": 150000
+          }
+        ],
+        "createdByUserId": "b9e2e350-501a-4595-86b6-4510b85c04f1",
+        "createdAt": "2026-03-15T15:56:14.980Z"
+      }
+    ],
+    "control-center-memberships": [
+      {
+        "userId": "b9e2e350-501a-4595-86b6-4510b85c04f1",
+        "controlCenterId": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "role": "owner"
+      }
+    ],
+    "control-centers": [
+      {
+        "id": "2e00ac61-95a6-4b75-957c-71905af03e1d",
+        "ownerUserId": "b9e2e350-501a-4595-86b6-4510b85c04f1",
+        "personId": "3303b9a0-653e-44d7-a1d7-edfe6cc46fdb",
+        "name": "Centro Smoke",
+        "currency": "BRL",
+        "createdAt": "2026-03-15T15:56:14.680Z"
+      }
+    ]
+  }
+}

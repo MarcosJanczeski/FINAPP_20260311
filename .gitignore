@@ -8,3 +8,6 @@ coverage/
 .DS_Store
 *.log
 tasks/
+playwright-report/
+test-results/
+.playwright/
