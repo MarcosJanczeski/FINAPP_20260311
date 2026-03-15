@@ -37,8 +37,8 @@ export class SyncPlanningEventsUseCase {
 
     for (const [key, grouped] of groupedExistingByKey) {
       const sorted = [...grouped].sort((a, b) => {
-        const rankA = a.status === 'active' ? 0 : 1;
-        const rankB = b.status === 'active' ? 0 : 1;
+        const rankA = this.rankForSyncKeeper(a);
+        const rankB = this.rankForSyncKeeper(b);
         if (rankA !== rankB) {
           return rankA - rankB;
         }
@@ -62,7 +62,24 @@ export class SyncPlanningEventsUseCase {
     for (const sourceItem of uniqueSourceItems) {
       seenKeys.add(sourceItem.sourceEventKey);
       const current = existingAutoByKey.get(sourceItem.sourceEventKey);
-      const preserved = current && current.status === 'confirmed' ? current : null;
+      const hasSettlement =
+        current?.ledgerLinks.some((link) => link.relation === 'settlement') ?? false;
+      const preserved =
+        current &&
+        (current.status === 'confirmed' ||
+          current.status === 'posted' ||
+          current.type === 'realizado' ||
+          hasSettlement)
+          ? current
+          : null;
+      const normalizedType =
+        preserved && preserved.ledgerLinks.some((link) => link.relation === 'settlement')
+          ? 'realizado'
+          : preserved?.type;
+      const normalizedStatus =
+        preserved && preserved.ledgerLinks.some((link) => link.relation === 'settlement')
+          ? 'posted'
+          : preserved?.status;
 
       const next: PlanningEvent = {
         id: current?.id ?? crypto.randomUUID(),
@@ -73,8 +90,8 @@ export class SyncPlanningEventsUseCase {
         plannedSettlementDate:
           preserved?.plannedSettlementDate ?? sourceItem.plannedSettlementDate,
         description: preserved?.description ?? sourceItem.description,
-        type: preserved?.type ?? sourceItem.type,
-        status: preserved?.status ?? sourceItem.status,
+        type: normalizedType ?? sourceItem.type,
+        status: normalizedStatus ?? sourceItem.status,
         direction: preserved?.direction ?? sourceItem.direction,
         amountCents: preserved?.amountCents ?? sourceItem.amountCents,
         sourceType: sourceItem.sourceType,
@@ -106,5 +123,21 @@ export class SyncPlanningEventsUseCase {
     }
 
     return this.planningEventRepository.listByControlCenter(input.controlCenterId);
+  }
+
+  private rankForSyncKeeper(event: PlanningEvent): number {
+    if (event.ledgerLinks.some((link) => link.relation === 'settlement')) {
+      return 0;
+    }
+    if (event.status === 'confirmed' || event.type === 'confirmado_agendado') {
+      return 1;
+    }
+    if (event.status === 'posted' || event.type === 'realizado') {
+      return 2;
+    }
+    if (event.status === 'active') {
+      return 3;
+    }
+    return 4;
   }
 }

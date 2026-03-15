@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
+import type { Account } from '../../domain/entities/Account';
 import type { PlanningEvent } from '../../domain/entities/PlanningEvent';
 import { ROUTES } from '../../shared/constants/routes';
 import { RoutePlaceholder } from '../components/RoutePlaceholder';
@@ -33,11 +34,21 @@ export function ProjectionPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [controlCenterId, setControlCenterId] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [settlementEventId, setSettlementEventId] = useState<string | null>(null);
   const [documentDate, setDocumentDate] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [confirmedAmountCents, setConfirmedAmountCents] = useState(0);
+  const [settlementDate, setSettlementDate] = useState('');
+  const [settlementAmountCents, setSettlementAmountCents] = useState(0);
+  const [settlementAccountId, setSettlementAccountId] = useState('');
+  const [settlementMemo, setSettlementMemo] = useState('');
+  const [availableSettlementAccounts, setAvailableSettlementAccounts] = useState<Account[]>([]);
   const [availabilitySummary, setAvailabilitySummary] =
     useState<ProjectionAvailabilitySummaryView | null>(null);
+  const confirmSectionRef = useRef<HTMLElement | null>(null);
+  const confirmDocumentInputRef = useRef<HTMLInputElement | null>(null);
+  const settlementSectionRef = useRef<HTMLElement | null>(null);
+  const settlementAccountSelectRef = useRef<HTMLSelectElement | null>(null);
   const todayInputDate = useMemo(() => {
     const now = new Date();
     const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -52,6 +63,7 @@ export function ProjectionPage() {
 
     const setup = await container.useCases.getAccountsSetup.execute(session.userId);
     setControlCenterId(setup.controlCenterId);
+    setAvailableSettlementAccounts(setup.accounts.filter((account) => account.status === 'active'));
     await container.useCases.syncPlanningEvents.execute({ controlCenterId: setup.controlCenterId });
     const [data, summary] = await Promise.all([
       container.useCases.listPlanningEvents.execute(setup.controlCenterId),
@@ -69,6 +81,33 @@ export function ProjectionPage() {
     () => events.filter((event) => event.status !== 'canceled'),
     [events],
   );
+  const settlementEvent = useMemo(
+    () => events.find((event) => event.id === settlementEventId) ?? null,
+    [events, settlementEventId],
+  );
+
+  const functionalStateLabel = (event: PlanningEvent): string => {
+    if (event.status === 'canceled') {
+      return 'cancelado';
+    }
+    if (event.type === 'realizado') {
+      return 'realizado';
+    }
+    if (event.type === 'confirmado_agendado') {
+      return 'confirmado';
+    }
+    return 'previsto';
+  };
+
+  const sourceLabel = (event: PlanningEvent): string => {
+    if (event.sourceType === 'recurrence') {
+      return 'recorrência';
+    }
+    if (event.sourceType === 'budget_margin') {
+      return 'planejamento';
+    }
+    return 'planejamento';
+  };
 
   useEffect(() => {
     if (!session) {
@@ -100,7 +139,30 @@ export function ProjectionPage() {
     };
   }, [session]);
 
+  useEffect(() => {
+    if (!selectedEvent) {
+      return;
+    }
+
+    confirmSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    confirmDocumentInputRef.current?.focus();
+  }, [selectedEvent]);
+
+  useEffect(() => {
+    if (!settlementEvent) {
+      return;
+    }
+
+    settlementSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    settlementAccountSelectRef.current?.focus();
+  }, [settlementEvent]);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const startConfirm = (event: PlanningEvent) => {
+    setSettlementEventId(null);
     setSelectedEventId(event.id);
     setDocumentDate(todayInputDate);
     setDueDate(isoDateToInputValue(event.dueDate));
@@ -114,6 +176,27 @@ export function ProjectionPage() {
     setDocumentDate('');
     setDueDate('');
     setConfirmedAmountCents(0);
+    scrollToTop();
+  };
+
+  const startSettlement = (event: PlanningEvent) => {
+    setSelectedEventId(null);
+    setSettlementEventId(event.id);
+    setSettlementDate(todayInputDate);
+    setSettlementAmountCents(event.amountCents);
+    setSettlementAccountId('');
+    setSettlementMemo('');
+    setError(null);
+    setSuccess(null);
+  };
+
+  const cancelSettlement = () => {
+    setSettlementEventId(null);
+    setSettlementDate('');
+    setSettlementAmountCents(0);
+    setSettlementAccountId('');
+    setSettlementMemo('');
+    scrollToTop();
   };
 
   const handleConfirm = async (event: FormEvent<HTMLFormElement>) => {
@@ -148,6 +231,7 @@ export function ProjectionPage() {
       await refresh();
       setSuccess('Recorrencia confirmada como compromisso com sucesso.');
       cancelConfirm();
+      scrollToTop();
     } catch (currentError) {
       setError(
         currentError instanceof Error ? currentError.message : 'Falha ao confirmar recorrencia.',
@@ -187,6 +271,48 @@ export function ProjectionPage() {
         currentError instanceof Error
           ? currentError.message
           : 'Falha ao reverter confirmacao da recorrencia.',
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSettlement = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!controlCenterId || !session || !settlementEvent) {
+      setError('Evento de liquidação inválido.');
+      return;
+    }
+    if (!settlementDate || !settlementAccountId) {
+      setError('Informe conta de disponibilidade e data de liquidação.');
+      return;
+    }
+    if (settlementAmountCents <= 0) {
+      setError('Valor de liquidação deve ser maior que zero.');
+      return;
+    }
+
+    setError(null);
+    setSuccess(null);
+    setIsSaving(true);
+
+    try {
+      await container.useCases.settleRecurrencePlanningEvent.execute({
+        id: settlementEvent.id,
+        controlCenterId,
+        settlementDate: inputValueToIsoDateAtNoonUtc(settlementDate),
+        settlementAmountCents,
+        settlementAccountId,
+        memo: settlementMemo,
+        settledByUserId: session.userId,
+      });
+      await refresh();
+      setSuccess('Compromisso liquidado e registrado na contabilidade com sucesso.');
+      cancelSettlement();
+      scrollToTop();
+    } catch (currentError) {
+      setError(
+        currentError instanceof Error ? currentError.message : 'Falha ao liquidar compromisso.',
       );
     } finally {
       setIsSaving(false);
@@ -244,26 +370,50 @@ export function ProjectionPage() {
         ) : null}
 
         {visibleEvents.length > 0 ? (
-          <ul>
+          <ul style={{ display: 'grid', gap: '0.75rem', listStyle: 'none', padding: 0 }}>
             {visibleEvents.map((event) => (
-              <li key={event.id}>
-                {formatDatePtBrFromIso(event.dueDate)} | {event.type} | {event.status}{' '}
-                | {event.description} | {formatCurrencyFromCents(event.amountCents)}{' '}
-                {event.type === 'previsto_recorrencia' && event.status === 'active' ? (
-                  <button type="button" onClick={() => startConfirm(event)} style={{ marginLeft: '0.5rem' }}>
-                    Confirmar recorrencia
-                  </button>
-                ) : null}
-                {event.type === 'confirmado_agendado' && event.status === 'confirmed' ? (
-                  <button
-                    type="button"
-                    onClick={() => void handleReverseConfirmation(event)}
-                    style={{ marginLeft: '0.5rem' }}
-                    disabled={isSaving}
-                  >
-                    Reverter confirmacao
-                  </button>
-                ) : null}
+              <li
+                key={event.id}
+                style={{
+                  border: '1px solid #d7d7d7',
+                  borderRadius: 8,
+                  padding: '0.75rem',
+                  display: 'grid',
+                  gap: '0.35rem',
+                }}
+              >
+                <strong>{formatDatePtBrFromIso(event.dueDate)}</strong>
+                <span style={{ textTransform: 'capitalize' }}>
+                  {functionalStateLabel(event)} • {sourceLabel(event)}
+                </span>
+                <span>{event.description}</span>
+                <strong>{formatCurrencyFromCents(event.amountCents)}</strong>
+
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  {event.type === 'previsto_recorrencia' && event.status === 'active' ? (
+                    <button type="button" onClick={() => startConfirm(event)}>
+                      Confirmar recorrencia
+                    </button>
+                  ) : null}
+                  {event.type === 'confirmado_agendado' && event.status === 'confirmed' ? (
+                    <button
+                      type="button"
+                      onClick={() => startSettlement(event)}
+                      disabled={isSaving}
+                    >
+                      {event.direction === 'outflow' ? 'Marcar como pago' : 'Marcar como recebido'}
+                    </button>
+                  ) : null}
+                  {event.type === 'confirmado_agendado' && event.status === 'confirmed' ? (
+                    <button
+                      type="button"
+                      onClick={() => void handleReverseConfirmation(event)}
+                      disabled={isSaving}
+                    >
+                      Reverter confirmacao
+                    </button>
+                  ) : null}
+                </div>
               </li>
             ))}
           </ul>
@@ -271,7 +421,7 @@ export function ProjectionPage() {
       </section>
 
       {selectedEvent ? (
-        <section style={{ marginTop: '1rem' }}>
+        <section ref={confirmSectionRef} style={{ marginTop: '1rem' }}>
           <h2>Confirmar recorrencia prevista</h2>
           <p>{selectedEvent.description}</p>
           <form onSubmit={handleConfirm} style={{ display: 'grid', gap: '0.5rem', maxWidth: 380 }}>
@@ -279,6 +429,7 @@ export function ProjectionPage() {
             <input
               id="confirm-document-date"
               type="date"
+              ref={confirmDocumentInputRef}
               value={documentDate}
               onChange={(event) => setDocumentDate(event.target.value)}
               max={todayInputDate}
@@ -307,6 +458,64 @@ export function ProjectionPage() {
                 {isSaving ? 'Confirmando...' : 'Confirmar compromisso'}
               </button>
               <button type="button" onClick={cancelConfirm} disabled={isSaving}>
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </section>
+      ) : null}
+
+      {settlementEvent ? (
+        <section ref={settlementSectionRef} style={{ marginTop: '1rem' }}>
+          <h2>Liquidar compromisso confirmado</h2>
+          <p>{settlementEvent.description}</p>
+          <form onSubmit={handleSettlement} style={{ display: 'grid', gap: '0.5rem', maxWidth: 420 }}>
+            <label htmlFor="settlement-account">Conta de disponibilidade</label>
+            <select
+              id="settlement-account"
+              ref={settlementAccountSelectRef}
+              value={settlementAccountId}
+              onChange={(event) => setSettlementAccountId(event.target.value)}
+              required
+            >
+              <option value="">Selecione uma conta</option>
+              {availableSettlementAccounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name}
+                </option>
+              ))}
+            </select>
+
+            <label htmlFor="settlement-date">Data da liquidacao</label>
+            <input
+              id="settlement-date"
+              type="date"
+              value={settlementDate}
+              onChange={(event) => setSettlementDate(event.target.value)}
+              required
+            />
+
+            <label htmlFor="settlement-amount">Valor pago/recebido</label>
+            <CurrencyInput
+              id="settlement-amount"
+              valueCents={settlementAmountCents}
+              onChangeCents={setSettlementAmountCents}
+            />
+
+            <label htmlFor="settlement-memo">Observacao (opcional)</label>
+            <input
+              id="settlement-memo"
+              type="text"
+              value={settlementMemo}
+              onChange={(event) => setSettlementMemo(event.target.value)}
+              placeholder="Memorando da liquidacao"
+            />
+
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button type="submit" disabled={isSaving}>
+                {isSaving ? 'Liquidando...' : 'Confirmar liquidacao'}
+              </button>
+              <button type="button" onClick={cancelSettlement} disabled={isSaving}>
                 Cancelar
               </button>
             </div>
