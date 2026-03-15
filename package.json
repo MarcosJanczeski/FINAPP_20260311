@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test:e2e:smoke": "playwright test --project=smoke-mobile e2e/smoke.mobile.spec.ts",
+    "test:e2e:recurrence:lifecycle": "playwright test --project=smoke-mobile e2e/recurrence.lifecycle.spec.ts",
     "test:e2e:smoke:fixture": "SMOKE_MODE=fixture playwright test --project=smoke-mobile e2e/smoke.mobile.spec.ts",
     "test:e2e:smoke:fixture:refresh": "SMOKE_MODE=fresh SMOKE_CAPTURE_FIXTURE_PATH=e2e/fixtures/finapp.smoke.fixture.json playwright test --project=smoke-mobile e2e/smoke.mobile.spec.ts",
     "dev:snapshot:capture": "node scripts/dev/localStorageSnapshot.mjs capture",
