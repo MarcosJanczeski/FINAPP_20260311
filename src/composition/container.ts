@@ -24,6 +24,7 @@ import { UpsertRecurrenceUseCase } from '../application/use-cases/UpsertRecurren
 import { ConfirmRecurrencePlanningEventUseCase } from '../application/use-cases/ConfirmRecurrencePlanningEventUseCase';
 import { ReverseRecurrenceConfirmationUseCase } from '../application/use-cases/ReverseRecurrenceConfirmationUseCase';
 import { SettleRecurrencePlanningEventUseCase } from '../application/use-cases/SettleRecurrencePlanningEventUseCase';
+import { GetAccountAvailabilityStatementUseCase } from '../application/use-cases/GetAccountAvailabilityStatementUseCase';
 import { GetProjectionAvailabilitySummaryUseCase } from '../application/use-cases/GetProjectionAvailabilitySummaryUseCase';
 import {
   NoopBudgetMarginPlanningEventSourceProvider,
@@ -57,6 +58,7 @@ export interface AppContainer {
     confirmRecurrencePlanningEvent: ConfirmRecurrencePlanningEventUseCase;
     reverseRecurrenceConfirmation: ReverseRecurrenceConfirmationUseCase;
     settleRecurrencePlanningEvent: SettleRecurrencePlanningEventUseCase;
+    getAccountAvailabilityStatement: GetAccountAvailabilityStatementUseCase;
     getProjectionAvailabilitySummary: GetProjectionAvailabilitySummaryUseCase;
   };
 }
@@ -130,8 +132,13 @@ export function createAppContainer(): AppContainer {
       repositories.ledgerAccountRepository,
       repositories.ledgerEntryRepository,
     ),
+    getAccountAvailabilityStatement: new GetAccountAvailabilityStatementUseCase(
+      repositories.accountRepository,
+      repositories.ledgerEntryRepository,
+    ),
     getProjectionAvailabilitySummary: new GetProjectionAvailabilitySummaryUseCase(
       repositories.accountRepository,
+      repositories.ledgerEntryRepository,
       repositories.planningEventRepository,
     ),
   };

@@ -40,9 +40,13 @@ export interface CloseAccountInputDTO {
   accountId: ID;
 }
 
+export type AccountListItemDTO = Account & {
+  currentBalanceCents: number;
+};
+
 export interface AccountsSetupDTO {
   controlCenterId: ID;
-  accounts: Account[];
+  accounts: AccountListItemDTO[];
   ledgerAccounts: LedgerAccount[];
   ledgerEntries: LedgerEntry[];
 }

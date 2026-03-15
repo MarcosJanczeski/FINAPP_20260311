@@ -1,6 +1,7 @@
 import type { Account } from '../../domain/entities/Account';
 import type { PlanningEvent } from '../../domain/entities/PlanningEvent';
 import type { AccountRepository } from '../../domain/repositories/AccountRepository';
+import type { LedgerEntryRepository } from '../../domain/repositories/LedgerEntryRepository';
 import type { PlanningEventRepository } from '../../domain/repositories/PlanningEventRepository';
 import type { ID, ISODateString } from '../../domain/types/common';
 
@@ -50,21 +51,35 @@ function isProjectedEvent(event: PlanningEvent, windowStart: Date, windowEnd: Da
 export class GetProjectionAvailabilitySummaryUseCase {
   constructor(
     private readonly accountRepository: AccountRepository,
+    private readonly ledgerEntryRepository: LedgerEntryRepository,
     private readonly planningEventRepository: PlanningEventRepository,
   ) {}
 
   async execute(controlCenterId: ID): Promise<ProjectionAvailabilitySummary> {
-    const [accounts, events] = await Promise.all([
+    const [accounts, ledgerEntries, events] = await Promise.all([
       this.accountRepository.listByControlCenter(controlCenterId),
+      this.ledgerEntryRepository.listByControlCenter(controlCenterId),
       this.planningEventRepository.listByControlCenter(controlCenterId),
     ]);
 
     const windowStart = firstDayOfCurrentMonthUtc();
     const windowEnd = lastDayOfMonthOffsetUtc(3);
 
-    const baseBalanceCents = accounts
-      .filter((account) => isAvailabilityAccount(account))
-      .reduce((sum, account) => sum + account.openingBalanceCents, 0);
+    const availabilityLedgerAccountIds = new Set(
+      accounts
+        .filter((account) => isAvailabilityAccount(account))
+        .map((account) => account.ledgerAccountId),
+    );
+
+    const baseBalanceCents = ledgerEntries.reduce((entrySum, entry) => {
+      const lineImpact = entry.lines.reduce((lineSum, line) => {
+        if (!availabilityLedgerAccountIds.has(line.ledgerAccountId)) {
+          return lineSum;
+        }
+        return lineSum + line.debitCents - line.creditCents;
+      }, 0);
+      return entrySum + lineImpact;
+    }, 0);
 
     const consideredEvents = events.filter((event) => isProjectedEvent(event, windowStart, windowEnd));
     const projectedInflowsCents = consideredEvents

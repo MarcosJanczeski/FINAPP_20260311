@@ -6,6 +6,14 @@ import type { LedgerEntryRepository } from '../../domain/repositories/LedgerEntr
 import type { CreateAccountInputDTO } from '../dto/AccountSetupDTO';
 
 const OPENING_EQUITY_CODE = 'PL:SALDOS_INICIAIS';
+const AVAILABILITY_BUCKET_CODE = 'ATIVO:DISPONIBILIDADES';
+
+function isOperationalAvailabilityAccount(input: CreateAccountInputDTO): boolean {
+  return (
+    input.nature === 'asset' &&
+    (input.type === 'cash' || input.type === 'checking' || input.type === 'digital')
+  );
+}
 
 export class CreateAccountWithOpeningBalanceUseCase {
   constructor(
@@ -26,17 +34,10 @@ export class CreateAccountWithOpeningBalanceUseCase {
       throw new Error('Saldo inicial nao pode ser negativo.');
     }
 
-    const ledgerAccount = await this.ledgerAccountRepository.getById(input.ledgerAccountId);
-    if (!ledgerAccount || ledgerAccount.controlCenterId !== input.controlCenterId) {
-      throw new Error('Conta contabil invalida para este centro de controle.');
-    }
-
-    if (
-      (input.nature === 'asset' && ledgerAccount.kind !== 'asset') ||
-      (input.nature === 'liability' && ledgerAccount.kind !== 'liability')
-    ) {
-      throw new Error('A natureza da conta nao corresponde a conta contabil selecionada.');
-    }
+    const isAvailability = isOperationalAvailabilityAccount(input);
+    const ledgerAccount = isAvailability
+      ? await this.ensureSpecificAvailabilityLedgerAccount(input.controlCenterId, name)
+      : await this.resolveSelectedLedgerAccount(input);
 
     const openingEquity = await this.ensureOpeningEquityAccount(input.controlCenterId);
     const now = new Date().toISOString();
@@ -47,7 +48,7 @@ export class CreateAccountWithOpeningBalanceUseCase {
       name,
       type: input.type,
       nature: input.nature,
-      ledgerAccountId: input.ledgerAccountId,
+      ledgerAccountId: ledgerAccount.id,
       openingBalanceCents,
       status: 'active',
       closedAt: null,
@@ -64,7 +65,7 @@ export class CreateAccountWithOpeningBalanceUseCase {
         referenceType: 'account_opening',
         description: `Saldo inicial - ${account.name}`,
         isAsset: account.nature === 'asset',
-        targetLedgerAccountId: input.ledgerAccountId,
+        targetLedgerAccountId: account.ledgerAccountId,
         openingEquityAccountId: openingEquity.id,
         amountCents: openingBalanceCents,
         userId: input.createdByUserId,
@@ -88,6 +89,47 @@ export class CreateAccountWithOpeningBalanceUseCase {
       name: 'PL - Saldos Iniciais',
       kind: 'equity' as const,
       isSystem: true,
+      createdAt: new Date().toISOString(),
+    };
+
+    await this.ledgerAccountRepository.save(created);
+    return created;
+  }
+
+  private async resolveSelectedLedgerAccount(input: CreateAccountInputDTO) {
+    const ledgerAccount = await this.ledgerAccountRepository.getById(input.ledgerAccountId);
+    if (!ledgerAccount || ledgerAccount.controlCenterId !== input.controlCenterId) {
+      throw new Error('Conta contabil invalida para este centro de controle.');
+    }
+
+    if (
+      (input.nature === 'asset' && ledgerAccount.kind !== 'asset') ||
+      (input.nature === 'liability' && ledgerAccount.kind !== 'liability')
+    ) {
+      throw new Error('A natureza da conta nao corresponde a conta contabil selecionada.');
+    }
+
+    return ledgerAccount;
+  }
+
+  private async ensureSpecificAvailabilityLedgerAccount(controlCenterId: string, accountName: string) {
+    const normalizedName = accountName
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .slice(0, 24);
+    const suffix = crypto.randomUUID().slice(0, 6).toUpperCase();
+    const code = `${AVAILABILITY_BUCKET_CODE}:${normalizedName || 'CONTA'}_${suffix}`;
+
+    const created = {
+      id: crypto.randomUUID(),
+      controlCenterId,
+      code,
+      name: `Disponibilidades - ${accountName}`,
+      kind: 'asset' as const,
+      isSystem: false,
       createdAt: new Date().toISOString(),
     };
 

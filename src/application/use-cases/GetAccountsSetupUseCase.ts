@@ -5,6 +5,9 @@ import type { LedgerAccountRepository } from '../../domain/repositories/LedgerAc
 import type { LedgerEntryRepository } from '../../domain/repositories/LedgerEntryRepository';
 import type { ID } from '../../domain/types/common';
 import type { AccountsSetupDTO } from '../dto/AccountSetupDTO';
+import { getCurrentBalanceFromLedger } from '../services/accountAvailabilityLedger';
+
+const AVAILABILITY_BUCKET_CODE = 'ATIVO:DISPONIBILIDADES';
 
 const DEFAULT_LEDGER_ACCOUNTS: ReadonlyArray<Omit<LedgerAccount, 'id' | 'createdAt' | 'controlCenterId'>> =
   [
@@ -73,6 +76,7 @@ export class GetAccountsSetupUseCase {
     }
 
     await this.ensureDefaultLedgerAccounts(controlCenter.id);
+    await this.normalizeLegacyAvailabilityAccounts(controlCenter.id);
 
     const [accounts, ledgerAccounts, ledgerEntries] = await Promise.all([
       this.accountRepository.listByControlCenter(controlCenter.id),
@@ -80,9 +84,14 @@ export class GetAccountsSetupUseCase {
       this.ledgerEntryRepository.listByControlCenter(controlCenter.id),
     ]);
 
+    const accountsWithCurrentBalance = accounts.map((account) => ({
+      ...account,
+      currentBalanceCents: getCurrentBalanceFromLedger(ledgerEntries, account.ledgerAccountId),
+    }));
+
     return {
       controlCenterId: controlCenter.id,
-      accounts,
+      accounts: accountsWithCurrentBalance,
       ledgerAccounts,
       ledgerEntries,
     };
@@ -103,6 +112,63 @@ export class GetAccountsSetupUseCase {
         kind: template.kind,
         isSystem: template.isSystem,
         createdAt: new Date().toISOString(),
+      });
+    }
+  }
+
+  private async normalizeLegacyAvailabilityAccounts(controlCenterId: ID): Promise<void> {
+    const [accounts, ledgerAccounts] = await Promise.all([
+      this.accountRepository.listByControlCenter(controlCenterId),
+      this.ledgerAccountRepository.listByControlCenter(controlCenterId),
+    ]);
+
+    const ledgerAccountById = new Map(ledgerAccounts.map((account) => [account.id, account]));
+    const genericAvailability = ledgerAccounts.find(
+      (account) => account.code === AVAILABILITY_BUCKET_CODE,
+    );
+    if (!genericAvailability) {
+      return;
+    }
+
+    for (const account of accounts) {
+      const isAvailabilityOperational =
+        account.nature === 'asset' &&
+        (account.type === 'cash' || account.type === 'checking' || account.type === 'digital');
+      if (!isAvailabilityOperational) {
+        continue;
+      }
+
+      const currentLedgerAccount = ledgerAccountById.get(account.ledgerAccountId);
+      const pointsToGeneric =
+        !currentLedgerAccount ||
+        currentLedgerAccount.code === AVAILABILITY_BUCKET_CODE ||
+        currentLedgerAccount.id === genericAvailability.id;
+      if (!pointsToGeneric) {
+        continue;
+      }
+
+      const specificCode = `${AVAILABILITY_BUCKET_CODE}:ACC_${account.id.slice(0, 8).toUpperCase()}`;
+      let specificLedgerAccount = await this.ledgerAccountRepository.getByCode(
+        controlCenterId,
+        specificCode,
+      );
+      if (!specificLedgerAccount) {
+        specificLedgerAccount = {
+          id: crypto.randomUUID(),
+          controlCenterId,
+          code: specificCode,
+          name: `Disponibilidades - ${account.name}`,
+          kind: 'asset',
+          isSystem: false,
+          createdAt: new Date().toISOString(),
+        };
+        await this.ledgerAccountRepository.save(specificLedgerAccount);
+      }
+
+      await this.accountRepository.save({
+        ...account,
+        ledgerAccountId: specificLedgerAccount.id,
+        updatedAt: new Date().toISOString(),
       });
     }
   }
