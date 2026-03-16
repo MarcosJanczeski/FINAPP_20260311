@@ -577,8 +577,10 @@ Estados/transições mínimas de `PlanningEvent`:
 * cancelamento permitido em `previsto` e `confirmado`
 * reversão de confirmação deve ocorrer por estorno/compensação, sem apagar histórico; se houver liquidação ativa, estornar primeiro a liquidação e depois o reconhecimento
 * retorno para previsão e cancelamento de ocorrência no período (skip) devem ser tratados como resultados distintos na camada de aplicação
+* cancelamento por skip deve afetar apenas a ocorrência do período; não desativa a recorrência base
 * desativação de recorrência deve cancelar apenas previsões `active`; itens já confirmados/realizados devem permanecer preservados no fluxo operacional e contábil
 * na reversão de confirmação, o estorno deve usar a mesma data contábil (`date`) do lançamento original; `createdAt` registra a data/hora real da execução e `reversalOf` referencia o lançamento original
+* deve haver bloqueios explícitos contra dupla reversão ativa do mesmo reconhecimento ou da mesma liquidação
 * `posted` pode existir como detalhe técnico interno, sem substituir estados de negócio
 
 Componentes técnicos mínimos (etapa atual):
@@ -592,7 +594,9 @@ Componentes técnicos mínimos (etapa atual):
 * validações mínimas na confirmação: `documentDate` não pode ser futura e `dueDate` não pode ser anterior a `documentDate`
 * sincronização deve ser idempotente por `sourceEventKey`, deduplicando chaves repetidas e saneando duplicatas legadas por cancelamento técnico
 * `ledgerLinks[]` deve registrar relações semânticas explícitas (`recognition`, `adjustment`, `settlement`, `settlement_reversal`, `recognition_reversal`), mantendo `reversal` apenas para compatibilidade legada
+* resolução de vínculo ativo deve ignorar lançamentos já revertidos (`reversalOf`) ao consolidar estado funcional e contábil do evento
 * classificação de evento realizado deve considerar liquidação ativa (liquidação sem estorno correspondente), evitando marcar como `realizado` eventos já estornados
+* projeção deve refletir estado funcional final consolidado; histórico contábil revertido não deve gerar presença operacional ativa indevida
 * listagem padrão da projeção pode ocultar eventos `canceled` para reduzir ruído operacional, mantendo rastreabilidade em persistência
 * conversões de data na projeção devem usar formato estável (`YYYY-MM-DD` + horário neutro) para evitar deslocamento de um dia por fuso horário
 

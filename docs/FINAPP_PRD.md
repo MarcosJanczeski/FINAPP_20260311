@@ -830,9 +830,11 @@ Transições mínimas:
 * `previsto` -> `cancelado`
 * `confirmado_agendado` -> `previsto` por estorno de reconhecimento; se houver liquidação ativa, estornar primeiro a liquidação e depois o reconhecimento
 * `confirmado_agendado`/`realizado` -> `cancelado` (skip do período) por estorno/compensação, sem apagar histórico
+* o skip (`cancelado`) afeta somente a ocorrência do período corrente; a recorrência base permanece ativa para períodos futuros
 * ao desativar uma recorrência, somente previsões `active` vinculadas podem ser canceladas; eventos já confirmados/realizados permanecem como compromisso/histórico e não devem ser reabertos automaticamente
 * na reversão de confirmação, o estorno deve usar a mesma data contábil (`date`) do lançamento original; `createdAt` registra a data/hora real da execução e `reversalOf` referencia o lançamento original
 * toda reversão deve ser aditiva e auditável: nenhum `LedgerEntry` anterior pode ser apagado ou sobrescrito
+* deve haver bloqueio de dupla reversão ativa para o mesmo reconhecimento ou para a mesma liquidação
 
 Status técnico atual da projeção (MVP):
 
@@ -843,6 +845,7 @@ Status técnico atual da projeção (MVP):
 * neste MVP, na confirmação de recorrência a UI edita apenas `documentDate` e `dueDate`; `plannedSettlementDate` é preenchida automaticamente com `dueDate` e o ajuste manual dessa data ficará para fluxo futuro
 * validações mínimas na confirmação: `documentDate` não pode ser futura e `dueDate` não pode ser anterior a `documentDate`
 * a listagem padrão da projeção exibe eventos não cancelados (`active`/`confirmed`), preservando `canceled` para rastreabilidade técnica
+* a projeção operacional deve ignorar vínculos contábeis já revertidos e considerar apenas estado funcional consolidado do evento
 
 ---
 
