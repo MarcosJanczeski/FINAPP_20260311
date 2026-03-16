@@ -2,6 +2,7 @@ import type { PlanningEvent } from '../../domain/entities/PlanningEvent';
 import type { PlanningEventRepository } from '../../domain/repositories/PlanningEventRepository';
 import type { ID } from '../../domain/types/common';
 import type { PlanningEventSourceProvider } from '../services/PlanningEventSourceProvider';
+import { resolvePlanningEventOperationalSnapshot } from '../services/planningEventOperationalResolver';
 
 interface SyncPlanningEventsInput {
   controlCenterId: ID;
@@ -62,22 +63,25 @@ export class SyncPlanningEventsUseCase {
     for (const sourceItem of uniqueSourceItems) {
       seenKeys.add(sourceItem.sourceEventKey);
       const current = existingAutoByKey.get(sourceItem.sourceEventKey);
-      const hasSettlement = current ? this.hasActiveSettlement(current) : false;
+      const currentSnapshot = current ? resolvePlanningEventOperationalSnapshot(current) : null;
+      const hasSettlement = (currentSnapshot?.activeLinksCount.settlement ?? 0) > 0;
       const preserved =
         current &&
-        (current.status === 'confirmed' ||
-          current.status === 'posted' ||
-          current.status === 'canceled' ||
-          current.type === 'realizado' ||
+        (currentSnapshot?.state === 'confirmado' ||
+          currentSnapshot?.state === 'realizado' ||
+          currentSnapshot?.state === 'cancelado' ||
           hasSettlement)
           ? current
           : null;
+      const preservedSnapshot = preserved
+        ? resolvePlanningEventOperationalSnapshot(preserved)
+        : null;
       const normalizedType =
-        preserved && this.hasActiveSettlement(preserved)
+        (preservedSnapshot?.activeLinksCount.settlement ?? 0) > 0
           ? 'realizado'
           : preserved?.type;
       const normalizedStatus =
-        preserved && this.hasActiveSettlement(preserved)
+        (preservedSnapshot?.activeLinksCount.settlement ?? 0) > 0
           ? 'posted'
           : preserved?.status;
 
@@ -126,29 +130,22 @@ export class SyncPlanningEventsUseCase {
   }
 
   private rankForSyncKeeper(event: PlanningEvent): number {
-    if (this.hasActiveSettlement(event)) {
+    const snapshot = resolvePlanningEventOperationalSnapshot(event);
+    if (snapshot.activeLinksCount.settlement > 0) {
       return 0;
     }
-    if (event.status === 'confirmed' || event.type === 'confirmado_agendado') {
+    if (snapshot.state === 'confirmado') {
       return 1;
     }
-    if (event.status === 'posted' || event.type === 'realizado') {
+    if (snapshot.state === 'realizado') {
       return 2;
     }
-    if (event.status === 'canceled') {
+    if (snapshot.state === 'cancelado') {
       return 3;
     }
-    if (event.status === 'active') {
+    if (snapshot.state === 'previsto') {
       return 4;
     }
     return 5;
-  }
-
-  private hasActiveSettlement(event: PlanningEvent): boolean {
-    const settlementCount = event.ledgerLinks.filter((link) => link.relation === 'settlement').length;
-    const settlementReversalCount = event.ledgerLinks.filter(
-      (link) => link.relation === 'settlement_reversal',
-    ).length;
-    return settlementCount > settlementReversalCount;
   }
 }

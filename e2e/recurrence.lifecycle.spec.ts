@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { resolvePlanningEventOperationalSnapshot } from '../src/application/services/planningEventOperationalResolver';
 
 const FINAPP_NAMESPACE = 'finapp.mvp.v1';
 
@@ -48,6 +49,7 @@ interface PlanningEventLink {
 
 interface PlanningEvent {
   id: string;
+  sourceType: 'manual' | 'recurrence' | 'budget_margin' | 'payable' | 'receivable' | 'import';
   sourceId: string | null;
   sourceEventKey: string | null;
   description: string;
@@ -657,23 +659,12 @@ async function countActiveBaseLinks(
 ): Promise<number> {
   const entries = await invokeBridge<LedgerEntry[]>(page, 'listLedgerEntries', { controlCenterId });
   const byId = new Map(entries.map((entry) => [entry.id, entry]));
-  const reversalRelation = base === 'recognition' ? 'recognition_reversal' : 'settlement_reversal';
-  const acceptedReversals =
-    base === 'recognition'
-      ? new Set<PlanningEventLink['relation']>([reversalRelation, 'reversal'])
-      : new Set<PlanningEventLink['relation']>([reversalRelation]);
-  const reversedIds = new Set<string>();
-
-  for (const link of event.ledgerLinks.filter((item) => acceptedReversals.has(item.relation))) {
-    const reversalEntry = byId.get(link.ledgerEntryId);
-    if (reversalEntry?.reversalOf) {
-      reversedIds.add(reversalEntry.reversalOf);
-    }
-  }
-
-  return event.ledgerLinks.filter(
-    (link) => link.relation === base && !reversedIds.has(link.ledgerEntryId),
-  ).length;
+  const snapshot = resolvePlanningEventOperationalSnapshot(event, {
+    ledgerEntriesById: byId,
+  });
+  return base === 'recognition'
+    ? snapshot.activeLinksCount.recognition
+    : snapshot.activeLinksCount.settlement;
 }
 
 async function assertNoDuplicateActiveSettlements(
@@ -799,16 +790,7 @@ async function assertProjectionAggregates(
 }
 
 function functionalState(event: PlanningEvent): 'previsto' | 'confirmado' | 'realizado' | 'cancelado' {
-  if (event.status === 'canceled') {
-    return 'cancelado';
-  }
-  if (event.type === 'realizado') {
-    return 'realizado';
-  }
-  if (event.type === 'confirmado_agendado') {
-    return 'confirmado';
-  }
-  return 'previsto';
+  return resolvePlanningEventOperationalSnapshot(event).state;
 }
 
 async function buildStepReport(

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import type { Account } from '../../domain/entities/Account';
-import type { PlanningEvent } from '../../domain/entities/PlanningEvent';
 import { ROUTES } from '../../shared/constants/routes';
 import { RoutePlaceholder } from '../components/RoutePlaceholder';
 import { CurrencyInput, formatCurrencyFromCents } from '../forms/CurrencyInput';
@@ -95,7 +94,10 @@ export function ProjectionPage() {
     [events, settlementEventId],
   );
 
-  function functionalStateLabel(event: PlanningEvent): string {
+  function functionalStateLabel(event: PlanningEventListItem): string {
+    if (event.operationalState) {
+      return event.operationalState;
+    }
     if (event.status === 'canceled') {
       return 'cancelado';
     }
@@ -108,7 +110,7 @@ export function ProjectionPage() {
     return 'previsto';
   }
 
-  const sourceLabel = (event: PlanningEvent): string => {
+  const sourceLabel = (event: PlanningEventListItem): string => {
     if (event.sourceType === 'recurrence') {
       return 'recorrência';
     }
@@ -118,7 +120,7 @@ export function ProjectionPage() {
     return 'planejamento';
   };
 
-  const stateDisplayLabel = (event: PlanningEvent): string => {
+  const stateDisplayLabel = (event: PlanningEventListItem): string => {
     const state = functionalStateLabel(event);
     if (state === 'cancelado') {
       return 'Cancelado neste período';
@@ -126,7 +128,7 @@ export function ProjectionPage() {
     return `${state} • ${sourceLabel(event)}`;
   };
 
-  const getVisualTone = (event: PlanningEvent): {
+  const getVisualTone = (event: PlanningEventListItem): {
     border: string;
     background: string;
     stateColor: string;
@@ -164,11 +166,11 @@ export function ProjectionPage() {
     };
   };
 
-  const getDirectionalValueColor = (event: PlanningEvent): string => {
+  const getDirectionalValueColor = (event: PlanningEventListItem): string => {
     return event.direction === 'inflow' ? '#1f6f8b' : '#a23b72';
   };
 
-  const formatDirectionalValue = (event: PlanningEvent): string => {
+  const formatDirectionalValue = (event: PlanningEventListItem): string => {
     const signal = event.direction === 'inflow' ? '+' : '-';
     return `${signal} ${formatCurrencyFromCents(event.amountCents)}`;
   };
@@ -225,7 +227,7 @@ export function ProjectionPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const startConfirm = (event: PlanningEvent) => {
+  const startConfirm = (event: PlanningEventListItem) => {
     setSettlementEventId(null);
     setSelectedEventId(event.id);
     setDocumentDate(todayInputDate);
@@ -243,7 +245,7 @@ export function ProjectionPage() {
     scrollToTop();
   };
 
-  const startSettlement = (event: PlanningEvent) => {
+  const startSettlement = (event: PlanningEventListItem) => {
     setSelectedEventId(null);
     setSettlementEventId(event.id);
     setSettlementDate(todayInputDate);
@@ -305,7 +307,7 @@ export function ProjectionPage() {
     }
   };
 
-  const handleReverseConfirmation = async (planningEvent: PlanningEvent) => {
+  const handleReverseConfirmation = async (planningEvent: PlanningEventListItem) => {
     if (!controlCenterId || !session) {
       setError('Sessao ou centro de controle nao identificado.');
       return;
@@ -343,7 +345,7 @@ export function ProjectionPage() {
     }
   };
 
-  const handleReverseSettlement = async (planningEvent: PlanningEvent) => {
+  const handleReverseSettlement = async (planningEvent: PlanningEventListItem) => {
     if (!controlCenterId || !session) {
       setError('Sessao ou centro de controle nao identificado.');
       return;
@@ -638,7 +640,7 @@ export function ProjectionPage() {
                         {event.direction === 'outflow' ? 'Marcar como pago' : 'Marcar como recebido'}
                       </button>
                     ) : null}
-                    {event.type === 'confirmado_agendado' && event.status === 'confirmed' ? (
+                    {event.canReverseConfirmation ? (
                       <button
                         type="button"
                         onClick={() => void handleReverseConfirmation(event)}
@@ -647,7 +649,7 @@ export function ProjectionPage() {
                         Voltar para previsão
                       </button>
                     ) : null}
-                    {event.type === 'realizado' ? (
+                    {event.canReverseSettlement ? (
                       <button
                         type="button"
                         onClick={() => void handleReverseSettlement(event)}

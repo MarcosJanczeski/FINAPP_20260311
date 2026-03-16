@@ -1,10 +1,17 @@
 import type { PlanningEvent } from '../../domain/entities/PlanningEvent';
 import type { PlanningEventRepository } from '../../domain/repositories/PlanningEventRepository';
 import type { ID } from '../../domain/types/common';
+import {
+  resolvePlanningEventOperationalSnapshot,
+  type PlanningEventOperationalState,
+} from '../services/planningEventOperationalResolver';
 
 export interface PlanningEventListItem extends PlanningEvent {
+  operationalState: PlanningEventOperationalState;
   isCancelable: boolean;
   isCancelReversible: boolean;
+  canReverseSettlement: boolean;
+  canReverseConfirmation: boolean;
 }
 
 export class ListPlanningEventsUseCase {
@@ -12,31 +19,16 @@ export class ListPlanningEventsUseCase {
 
   async execute(controlCenterId: ID): Promise<PlanningEventListItem[]> {
     const events = await this.planningEventRepository.listByControlCenter(controlCenterId);
-    return events.map((event) => ({
-      ...event,
-      isCancelable: this.isCancelable(event),
-      isCancelReversible: this.isCancelReversible(event),
-    }));
-  }
-
-  private isCancelable(event: PlanningEvent): boolean {
-    if (event.sourceType !== 'recurrence') {
-      return false;
-    }
-    if (event.status === 'canceled') {
-      return false;
-    }
-    if (event.type === 'previsto_recorrencia' && event.status === 'active') {
-      return true;
-    }
-    return event.type === 'confirmado_agendado' || event.type === 'realizado';
-  }
-
-  private isCancelReversible(event: PlanningEvent): boolean {
-    return (
-      event.sourceType === 'recurrence' &&
-      event.type === 'previsto_recorrencia' &&
-      event.status === 'canceled'
-    );
+    return events.map((event) => {
+      const snapshot = resolvePlanningEventOperationalSnapshot(event);
+      return {
+        ...event,
+        operationalState: snapshot.state,
+        isCancelable: snapshot.capabilities.isCancelable,
+        isCancelReversible: snapshot.capabilities.isCancelReversible,
+        canReverseSettlement: snapshot.capabilities.canReverseSettlement,
+        canReverseConfirmation: snapshot.capabilities.canReverseConfirmation,
+      };
+    });
   }
 }
