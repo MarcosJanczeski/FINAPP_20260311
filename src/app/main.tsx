@@ -53,6 +53,8 @@ function registerDevBridge(appContainer: AppContainer): void {
     | 'settleRecurrencePlanningEvent'
     | 'reverseRecurrenceSettlement'
     | 'reverseRecurrenceConfirmation'
+    | 'cancelRecurrencePlanningEventOccurrence'
+    | 'revertRecurrenceOccurrenceCancellation'
     | 'getProjectionAvailabilitySummary'
     | 'listLedgerEntries';
 
@@ -105,6 +107,18 @@ function registerDevBridge(appContainer: AppContainer): void {
       case 'reverseRecurrenceConfirmation':
         return appContainer.useCases.reverseRecurrenceConfirmation.execute(
           payload as Parameters<AppContainer['useCases']['reverseRecurrenceConfirmation']['execute']>[0],
+        );
+      case 'cancelRecurrencePlanningEventOccurrence':
+        return appContainer.useCases.cancelRecurrencePlanningEventOccurrence.execute(
+          payload as Parameters<
+            AppContainer['useCases']['cancelRecurrencePlanningEventOccurrence']['execute']
+          >[0],
+        );
+      case 'revertRecurrenceOccurrenceCancellation':
+        return appContainer.useCases.revertRecurrenceOccurrenceCancellation.execute(
+          payload as Parameters<
+            AppContainer['useCases']['revertRecurrenceOccurrenceCancellation']['execute']
+          >[0],
         );
       case 'getProjectionAvailabilitySummary':
         return appContainer.useCases.getProjectionAvailabilitySummary.execute(

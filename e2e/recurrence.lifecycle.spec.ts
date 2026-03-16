@@ -16,6 +16,7 @@ type DevBridgeAction =
   | 'settleRecurrencePlanningEvent'
   | 'reverseRecurrenceSettlement'
   | 'reverseRecurrenceConfirmation'
+  | 'revertRecurrenceOccurrenceCancellation'
   | 'getProjectionAvailabilitySummary'
   | 'listLedgerEntries';
 
@@ -128,7 +129,7 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
   });
   const today = new Date();
   const todayDay = today.getDate();
-  const todayIsoNoon = toIsoNoonUtc(today);
+  const lifecycleBaseDate = toIsoNoonLocal(addDays(today, -1));
 
   const recurrence = await invokeBridge<Recurrence>(page, 'upsertRecurrence', {
     controlCenterId: controlCenter.id,
@@ -178,9 +179,9 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
     id: event.id,
     controlCenterId: controlCenter.id,
     confirmedByUserId: user.id,
-    documentDate: todayIsoNoon,
-    dueDate: todayIsoNoon,
-    plannedSettlementDate: todayIsoNoon,
+    documentDate: lifecycleBaseDate,
+    dueDate: lifecycleBaseDate,
+    plannedSettlementDate: lifecycleBaseDate,
     confirmedAmountCents: event.amountCents,
   });
   events = await loadRecurrenceEvents(page, controlCenter.id, recurrence.id);
@@ -210,7 +211,7 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
   await invokeBridge(page, 'settleRecurrencePlanningEvent', {
     id: event.id,
     controlCenterId: controlCenter.id,
-    settlementDate: todayIsoNoon,
+    settlementDate: lifecycleBaseDate,
     settlementAmountCents: event.amountCents,
     settlementAccountId: account.id,
     settledByUserId: user.id,
@@ -329,9 +330,9 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
     id: event.id,
     controlCenterId: controlCenter.id,
     confirmedByUserId: user.id,
-    documentDate: todayIsoNoon,
-    dueDate: todayIsoNoon,
-    plannedSettlementDate: todayIsoNoon,
+    documentDate: lifecycleBaseDate,
+    dueDate: lifecycleBaseDate,
+    plannedSettlementDate: lifecycleBaseDate,
     confirmedAmountCents: event.amountCents,
   });
   events = await loadRecurrenceEvents(page, controlCenter.id, recurrence.id);
@@ -358,7 +359,7 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
   await invokeBridge(page, 'settleRecurrencePlanningEvent', {
     id: event.id,
     controlCenterId: controlCenter.id,
-    settlementDate: todayIsoNoon,
+    settlementDate: lifecycleBaseDate,
     settlementAmountCents: event.amountCents,
     settlementAccountId: account.id,
     settledByUserId: user.id,
@@ -411,6 +412,13 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
   // 9) períodos futuros da recorrência continuam existindo
   await invokeBridge(page, 'syncPlanningEvents', { controlCenterId: controlCenter.id });
   events = await loadRecurrenceEvents(page, controlCenter.id, recurrence.id);
+  expect(
+    events.filter(
+      (item) =>
+        item.sourceEventKey === currentPeriodKey &&
+        item.status !== 'canceled',
+    ).length,
+  ).toBe(0);
   const futureEvents = events.filter((item) => item.id !== event.id && item.status === 'active');
   expect(futureEvents.length).toBeGreaterThan(0);
   await assertProjectionFutureContinuity(page, controlCenter.id, recurrence.id, currentPeriodKey);
@@ -466,9 +474,9 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
     id: skipEvent.id,
     controlCenterId: controlCenter.id,
     confirmedByUserId: user.id,
-    documentDate: todayIsoNoon,
-    dueDate: todayIsoNoon,
-    plannedSettlementDate: todayIsoNoon,
+    documentDate: lifecycleBaseDate,
+    dueDate: lifecycleBaseDate,
+    plannedSettlementDate: lifecycleBaseDate,
     confirmedAmountCents: skipEvent.amountCents,
   });
   skipEvents = await loadRecurrenceEvents(page, controlCenter.id, recurrenceSkip.id);
@@ -478,7 +486,7 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
   await invokeBridge(page, 'settleRecurrencePlanningEvent', {
     id: skipEvent.id,
     controlCenterId: controlCenter.id,
-    settlementDate: todayIsoNoon,
+    settlementDate: lifecycleBaseDate,
     settlementAmountCents: skipEvent.amountCents,
     settlementAccountId: account.id,
     settledByUserId: user.id,
@@ -524,13 +532,34 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
     'cancelado',
     false,
   );
+  await invokeBridge(page, 'syncPlanningEvents', { controlCenterId: controlCenter.id });
+  skipEvents = await loadRecurrenceEvents(page, controlCenter.id, recurrenceSkip.id);
+  skipEvent = findById(skipEvents, skipEvent.id);
+  expect(skipEvent.status).toBe('canceled');
+
+  await invokeBridge(page, 'revertRecurrenceOccurrenceCancellation', {
+    id: skipEvent.id,
+    controlCenterId: controlCenter.id,
+    revertedByUserId: user.id,
+  });
+  skipEvents = await loadRecurrenceEvents(page, controlCenter.id, recurrenceSkip.id);
+  skipEvent = findById(skipEvents, skipEvent.id);
+  expect(skipEvent.status).toBe('active');
+  expect(skipEvent.type).toBe('previsto_recorrencia');
+  await assertProjectionForCurrentPeriod(
+    page,
+    controlCenter.id,
+    skipCurrentPeriodKey,
+    'previsto',
+    true,
+  );
   await assertProjectionFutureContinuity(page, controlCenter.id, recurrenceSkip.id, skipCurrentPeriodKey);
   lifecycleReport.push(
     await buildStepReport(page, controlCenter.id, skipEvent, {
-      step: 'Edge 2) reverse settlement -> cancel skip',
-      expectedState: 'cancelado',
+      step: 'Edge 2) reverse settlement -> cancel skip -> revert cancel',
+      expectedState: 'previsto',
       projectionImpact:
-        'Após reversão parcial e cancelamento, período atual sai da projeção operacional e futuros continuam.',
+        'Após reverter cancelamento, período atual volta para previsto e futuros continuam.',
       status: 'PASS',
     }),
   );
@@ -674,11 +703,17 @@ async function assertAllReversalsHaveSource(
   }
 }
 
-function toIsoNoonUtc(date: Date): string {
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(date.getUTCDate()).padStart(2, '0');
+function toIsoNoonLocal(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}T12:00:00.000Z`;
+}
+
+function addDays(date: Date, days: number): Date {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
 }
 
 async function assertProjectionForCurrentPeriod(

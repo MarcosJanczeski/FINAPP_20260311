@@ -25,6 +25,8 @@ import { ConfirmRecurrencePlanningEventUseCase } from '../application/use-cases/
 import { ReverseRecurrenceConfirmationUseCase } from '../application/use-cases/ReverseRecurrenceConfirmationUseCase';
 import { ReverseRecurrenceSettlementUseCase } from '../application/use-cases/ReverseRecurrenceSettlementUseCase';
 import { SettleRecurrencePlanningEventUseCase } from '../application/use-cases/SettleRecurrencePlanningEventUseCase';
+import { CancelRecurrencePlanningEventOccurrenceUseCase } from '../application/use-cases/CancelRecurrencePlanningEventOccurrenceUseCase';
+import { RevertRecurrenceOccurrenceCancellationUseCase } from '../application/use-cases/RevertRecurrenceOccurrenceCancellationUseCase';
 import { GetAccountAvailabilityStatementUseCase } from '../application/use-cases/GetAccountAvailabilityStatementUseCase';
 import { GetProjectionAvailabilitySummaryUseCase } from '../application/use-cases/GetProjectionAvailabilitySummaryUseCase';
 import {
@@ -60,6 +62,8 @@ export interface AppContainer {
     reverseRecurrenceConfirmation: ReverseRecurrenceConfirmationUseCase;
     reverseRecurrenceSettlement: ReverseRecurrenceSettlementUseCase;
     settleRecurrencePlanningEvent: SettleRecurrencePlanningEventUseCase;
+    cancelRecurrencePlanningEventOccurrence: CancelRecurrencePlanningEventOccurrenceUseCase;
+    revertRecurrenceOccurrenceCancellation: RevertRecurrenceOccurrenceCancellationUseCase;
     getAccountAvailabilityStatement: GetAccountAvailabilityStatementUseCase;
     getProjectionAvailabilitySummary: GetProjectionAvailabilitySummaryUseCase;
   };
@@ -137,6 +141,16 @@ export function createAppContainer(): AppContainer {
       repositories.accountRepository,
       repositories.ledgerAccountRepository,
       repositories.ledgerEntryRepository,
+    ),
+    cancelRecurrencePlanningEventOccurrence: new CancelRecurrencePlanningEventOccurrenceUseCase(
+      repositories.planningEventRepository,
+      new ReverseRecurrenceConfirmationUseCase(
+        repositories.planningEventRepository,
+        repositories.ledgerEntryRepository,
+      ),
+    ),
+    revertRecurrenceOccurrenceCancellation: new RevertRecurrenceOccurrenceCancellationUseCase(
+      repositories.planningEventRepository,
     ),
     getAccountAvailabilityStatement: new GetAccountAvailabilityStatementUseCase(
       repositories.accountRepository,

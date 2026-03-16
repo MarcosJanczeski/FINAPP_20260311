@@ -67,6 +67,7 @@ export class SyncPlanningEventsUseCase {
         current &&
         (current.status === 'confirmed' ||
           current.status === 'posted' ||
+          current.status === 'canceled' ||
           current.type === 'realizado' ||
           hasSettlement)
           ? current
@@ -134,10 +135,13 @@ export class SyncPlanningEventsUseCase {
     if (event.status === 'posted' || event.type === 'realizado') {
       return 2;
     }
-    if (event.status === 'active') {
+    if (event.status === 'canceled') {
       return 3;
     }
-    return 4;
+    if (event.status === 'active') {
+      return 4;
+    }
+    return 5;
   }
 
   private hasActiveSettlement(event: PlanningEvent): boolean {

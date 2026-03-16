@@ -8,6 +8,7 @@ import { RoutePlaceholder } from '../components/RoutePlaceholder';
 import { CurrencyInput, formatCurrencyFromCents } from '../forms/CurrencyInput';
 import { useAppContainer } from '../hooks/useAppContainer';
 import { useAuth } from '../hooks/useAuth';
+import type { PlanningEventListItem } from '../../application/use-cases/ListPlanningEventsUseCase';
 import {
   formatDatePtBrFromIso,
   inputValueToIsoDateAtNoonUtc,
@@ -27,7 +28,7 @@ interface ProjectionAvailabilitySummaryView {
 export function ProjectionPage() {
   const { session } = useAuth();
   const container = useAppContainer();
-  const [events, setEvents] = useState<PlanningEvent[]>([]);
+  const [events, setEvents] = useState<PlanningEventListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +46,12 @@ export function ProjectionPage() {
   const [availableSettlementAccounts, setAvailableSettlementAccounts] = useState<Account[]>([]);
   const [availabilitySummary, setAvailabilitySummary] =
     useState<ProjectionAvailabilitySummaryView | null>(null);
+  const [filters, setFilters] = useState({
+    previsto: true,
+    confirmado: true,
+    realizado: true,
+    cancelado: false,
+  });
   const confirmSectionRef = useRef<HTMLElement | null>(null);
   const confirmDocumentInputRef = useRef<HTMLInputElement | null>(null);
   const settlementSectionRef = useRef<HTMLElement | null>(null);
@@ -77,16 +84,18 @@ export function ProjectionPage() {
     () => events.find((event) => event.id === selectedEventId) ?? null,
     [events, selectedEventId],
   );
-  const visibleEvents = useMemo(
-    () => events.filter((event) => event.status !== 'canceled'),
-    [events],
-  );
+  const visibleEvents = useMemo(() => {
+    return events.filter((event) => {
+      const state = functionalStateLabel(event);
+      return filters[state as keyof typeof filters];
+    });
+  }, [events, filters]);
   const settlementEvent = useMemo(
     () => events.find((event) => event.id === settlementEventId) ?? null,
     [events, settlementEventId],
   );
 
-  const functionalStateLabel = (event: PlanningEvent): string => {
+  function functionalStateLabel(event: PlanningEvent): string {
     if (event.status === 'canceled') {
       return 'cancelado';
     }
@@ -97,7 +106,7 @@ export function ProjectionPage() {
       return 'confirmado';
     }
     return 'previsto';
-  };
+  }
 
   const sourceLabel = (event: PlanningEvent): string => {
     if (event.sourceType === 'recurrence') {
@@ -107,6 +116,14 @@ export function ProjectionPage() {
       return 'planejamento';
     }
     return 'planejamento';
+  };
+
+  const stateDisplayLabel = (event: PlanningEvent): string => {
+    const state = functionalStateLabel(event);
+    if (state === 'cancelado') {
+      return 'Cancelado neste período';
+    }
+    return `${state} • ${sourceLabel(event)}`;
   };
 
   const getVisualTone = (event: PlanningEvent): {
@@ -310,9 +327,11 @@ export function ProjectionPage() {
         id: planningEvent.id,
         controlCenterId,
         reversedByUserId: session.userId,
+        targetState: 'forecast',
       });
       await refresh();
-      setSuccess('Confirmacao revertida por estorno com sucesso.');
+      setSuccess('Compromisso revertido para previsao por estorno.');
+      scrollToTop();
     } catch (currentError) {
       setError(
         currentError instanceof Error
@@ -348,11 +367,48 @@ export function ProjectionPage() {
         reversedByUserId: session.userId,
       });
       await refresh();
-      setSuccess('Liquidacao revertida por estorno. O compromisso voltou para confirmado.');
+      setSuccess('Liquidacao estornada com sucesso. O compromisso voltou para confirmado.');
       scrollToTop();
     } catch (currentError) {
       setError(
         currentError instanceof Error ? currentError.message : 'Falha ao reverter liquidacao.',
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancelOccurrence = async (planningEvent: PlanningEventListItem) => {
+    if (!controlCenterId || !session) {
+      setError('Sessao ou centro de controle nao identificado.');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Deseja cancelar a ocorrencia do periodo para \"${planningEvent.description}\"?`,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setError(null);
+    setSuccess(null);
+    setIsSaving(true);
+
+    try {
+      await container.useCases.cancelRecurrencePlanningEventOccurrence.execute({
+        id: planningEvent.id,
+        controlCenterId,
+        canceledByUserId: session.userId,
+      });
+      await refresh();
+      setSuccess('Ocorrencia cancelada para este periodo com sucesso.');
+      setSelectedEventId(null);
+      setSettlementEventId(null);
+      scrollToTop();
+    } catch (currentError) {
+      setError(
+        currentError instanceof Error ? currentError.message : 'Falha ao cancelar ocorrencia.',
       );
     } finally {
       setIsSaving(false);
@@ -401,6 +457,43 @@ export function ProjectionPage() {
     }
   };
 
+  const handleRevertCancellation = async (planningEvent: PlanningEventListItem) => {
+    if (!controlCenterId || !session) {
+      setError('Sessao ou centro de controle nao identificado.');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Deseja reverter o cancelamento da ocorrencia \"${planningEvent.description}\"?`,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setError(null);
+    setSuccess(null);
+    setIsSaving(true);
+
+    try {
+      await container.useCases.revertRecurrenceOccurrenceCancellation.execute({
+        id: planningEvent.id,
+        controlCenterId,
+        revertedByUserId: session.userId,
+      });
+      await refresh();
+      setSuccess('Cancelamento revertido. A ocorrencia voltou para previsto.');
+      scrollToTop();
+    } catch (currentError) {
+      setError(
+        currentError instanceof Error
+          ? currentError.message
+          : 'Falha ao reverter cancelamento da ocorrencia.',
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <RoutePlaceholder
       title="Projecao"
@@ -443,6 +536,55 @@ export function ProjectionPage() {
 
       <section style={{ marginTop: '1rem' }}>
         <h2>Eventos de projecao (PlanningEvent)</h2>
+        <details>
+          <summary>Filtros</summary>
+          <div style={{ display: 'grid', gap: '0.3rem', marginTop: '0.4rem' }}>
+            <label htmlFor="filter-previsto">
+              <input
+                id="filter-previsto"
+                type="checkbox"
+                checked={filters.previsto}
+                onChange={(event) =>
+                  setFilters((current) => ({ ...current, previsto: event.target.checked }))
+                }
+              />{' '}
+              Previsto
+            </label>
+            <label htmlFor="filter-confirmado">
+              <input
+                id="filter-confirmado"
+                type="checkbox"
+                checked={filters.confirmado}
+                onChange={(event) =>
+                  setFilters((current) => ({ ...current, confirmado: event.target.checked }))
+                }
+              />{' '}
+              Confirmado
+            </label>
+            <label htmlFor="filter-realizado">
+              <input
+                id="filter-realizado"
+                type="checkbox"
+                checked={filters.realizado}
+                onChange={(event) =>
+                  setFilters((current) => ({ ...current, realizado: event.target.checked }))
+                }
+              />{' '}
+              Realizado
+            </label>
+            <label htmlFor="filter-cancelado">
+              <input
+                id="filter-cancelado"
+                type="checkbox"
+                checked={filters.cancelado}
+                onChange={(event) =>
+                  setFilters((current) => ({ ...current, cancelado: event.target.checked }))
+                }
+              />{' '}
+              Cancelado
+            </label>
+          </div>
+        </details>
         {isLoading ? <p>Carregando eventos...</p> : null}
         {!isLoading && visibleEvents.length === 0 ? (
           <p>
@@ -469,7 +611,7 @@ export function ProjectionPage() {
                 >
                   <strong style={{ fontSize: '0.95rem' }}>{formatDatePtBrFromIso(event.dueDate)}</strong>
                   <span style={{ textTransform: 'capitalize', color: tone.stateColor, fontWeight: 600 }}>
-                    {functionalStateLabel(event)} • {sourceLabel(event)}
+                    {stateDisplayLabel(event)}
                   </span>
                   <span style={{ color: '#222' }}>{event.description}</span>
                   <strong
@@ -502,7 +644,7 @@ export function ProjectionPage() {
                         onClick={() => void handleReverseConfirmation(event)}
                         disabled={isSaving}
                       >
-                        Reverter confirmacao
+                        Voltar para previsão
                       </button>
                     ) : null}
                     {event.type === 'realizado' ? (
@@ -511,7 +653,25 @@ export function ProjectionPage() {
                         onClick={() => void handleReverseSettlement(event)}
                         disabled={isSaving}
                       >
-                        Reverter liquidacao
+                        Estornar liquidação
+                      </button>
+                    ) : null}
+                    {event.isCancelable ? (
+                      <button
+                        type="button"
+                        onClick={() => void handleCancelOccurrence(event)}
+                        disabled={isSaving}
+                      >
+                        Cancelar ocorrência
+                      </button>
+                    ) : null}
+                    {event.isCancelReversible ? (
+                      <button
+                        type="button"
+                        onClick={() => void handleRevertCancellation(event)}
+                        disabled={isSaving}
+                      >
+                        Reverter cancelamento
                       </button>
                     ) : null}
                   </div>
