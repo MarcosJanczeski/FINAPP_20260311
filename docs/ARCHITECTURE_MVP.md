@@ -329,6 +329,12 @@ c. cada card deve conter:
    - status visual
    - CTAs contextuais do item
    - em cenários com muitas ações, aplicar progressive disclosure: CTAs prioritários visíveis + menu contextual para ações secundárias/destrutivas
+   - quando houver menu contextual por item, o menu deve ser sobreposto (popover/dropdown) e não deve alterar a altura do card
+   - comportamento padrão do menu contextual:
+     - fechar ao clicar fora
+     - fechar com `Esc`
+     - abrir um novo menu fecha o anterior
+     - clicar em ação fecha o menu
 d. blocos técnicos ou complementares (ex.: extrato detalhado, lançamentos relacionados, detalhes contábeis) não devem competir visualmente com a listagem principal e devem aparecer em área separada
 e. componentes de card e CTA devem ser reutilizáveis entre módulos para manter consistência
 
@@ -590,11 +596,16 @@ Componentes técnicos mínimos (etapa atual):
 * `GetProjectionAvailabilitySummaryUseCase` para consolidar resumo de saldo projetado de disponibilidades
 * resolvedor canônico de estado operacional e capacidades derivadas de `PlanningEvent` (puro, sem acesso a repositório/UI), recebendo o evento e contexto já carregado para produzir:
   * estado operacional consolidado (`previsto`, `confirmado`, `realizado`, `cancelado`)
-  * capacidades derivadas (ex.: `isCancelable`, `isCancelReversible`, `canReverseSettlement`, `canReverseConfirmation`)
+  * capacidades derivadas (ex.: `isCancelable`, `isCancelReversible`, `canReverseSettlement`, `canReverseConfirmation`, `canPostponeSettlement`, `isVerifiable`)
 * confirmação de recorrência já gera `LedgerEntry` de reconhecimento com referência auditável
 * providers de origem (recorrência/margem) desacoplados via contrato
 * provider real de recorrência mensal ativo; provider de margem permanece em `noop` nesta etapa
 * neste MVP, na confirmação de recorrência a UI edita apenas `documentDate` e `dueDate`; `plannedSettlementDate` é preenchida automaticamente com `dueDate` e o ajuste manual dessa data ficará para fluxo futuro
+* semântica temporal operacional do evento:
+  * `dueDate` (vencimento contratual)
+  * `plannedSettlementDate` (previsão operacional)
+  * `settlementDate` (data real da liquidação)
+* liquidação deve preservar `plannedSettlementDate` e preencher `settlementDate`
 * validações mínimas na confirmação: `documentDate` não pode ser futura e `dueDate` não pode ser anterior a `documentDate`
 * sincronização deve ser idempotente por `sourceEventKey`, deduplicando chaves repetidas e saneando duplicatas legadas por cancelamento técnico
 * `ledgerLinks[]` deve registrar relações semânticas explícitas (`recognition`, `adjustment`, `settlement`, `settlement_reversal`, `recognition_reversal`), mantendo `reversal` apenas para compatibilidade legada
@@ -602,7 +613,15 @@ Componentes técnicos mínimos (etapa atual):
 * classificação de evento realizado deve considerar liquidação ativa (liquidação sem estorno correspondente), evitando marcar como `realizado` eventos já estornados
 * projeção deve refletir estado funcional final consolidado; histórico contábil revertido não deve gerar presença operacional ativa indevida
 * listagem padrão da projeção pode ocultar eventos `canceled` para reduzir ruído operacional, mantendo rastreabilidade em persistência
+* projeção de disponibilidades deve calcular fluxo por `cashFlowDate = settlementDate ?? plannedSettlementDate`
+* ordenação e agregações de projeção devem usar `cashFlowDate`, não `dueDate`
 * projeção deve permitir visualização secundária de cancelados e ação explícita de `Reverter cancelamento`, retornando a ocorrência cancelada para estado operacional `previsto`, quando elegível
+* ação operacional `Adiar pagamento` (em `confirmado`) deve atualizar apenas `plannedSettlementDate`, sem criar novo `LedgerEntry`
+* conferência operacional em `realizado`:
+  * `verify/unverify` altera apenas metadados operacionais (`isVerified`, `verifiedAt`, `verifiedByUserId`)
+  * não cria `LedgerEntry`
+  * evento conferido deve bloquear, no fluxo operacional padrão, o estorno de liquidação
+  * evento conferido deve bloquear, no fluxo operacional padrão, o cancelamento operacional da ocorrência
 * conversões de data na projeção devem usar formato estável (`YYYY-MM-DD` + horário neutro) para evitar deslocamento de um dia por fuso horário
 
 ---

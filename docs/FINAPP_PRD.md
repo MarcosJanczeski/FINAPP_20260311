@@ -263,7 +263,12 @@ Estrutura obrigatória:
 4. ações do item devem aparecer como CTAs contextuais no próprio card
 5. evitar poluição visual com excesso de botões e blocos técnicos misturados à listagem principal
 6. informações técnicas ou secundárias devem ficar em área separada, expansível ou em tela/bloco próprio
-7. quando um item possuir alta densidade de ações, priorizar até duas ações visíveis e agrupar as demais em menu contextual por item (ex.: botão `Ações`)
+7. quando um item possuir alta densidade de ações, priorizar até duas ações visíveis e agrupar as demais em menu contextual por item (ex.: botão `Ações`/`⋮`)
+8. menu contextual por item deve seguir comportamento padrão:
+   - abrir por clique no controle de ações
+   - fechar ao clicar fora
+   - fechar com `Esc`
+   - ao abrir outro menu, o anterior deve fechar
 
 Diretriz de referência:
 
@@ -841,6 +846,17 @@ Status técnico atual da projeção (MVP):
 * `/projection` já lê `PlanningEvent` e permite disparar sincronização manual
 * geração automática real por recorrência mensal já está ativa
 * geração por margem orçamentária permanece em stub (provider `noop`) nesta etapa
+* semântica temporal operacional em `PlanningEvent`:
+  * `dueDate`: vencimento contratual
+  * `plannedSettlementDate`: previsão operacional de pagamento/liquidação
+  * `settlementDate`: data real da liquidação
+* ao liquidar, `plannedSettlementDate` deve ser preservada e `settlementDate` deve registrar a data real
+* projeção de disponibilidades deve usar data de fluxo de caixa:
+  * `cashFlowDate = settlementDate ?? plannedSettlementDate`
+* ordenação da timeline, agregações (entradas/saídas), saldo diário, menor saldo e saldo final projetado devem seguir `cashFlowDate`
+* comunicação temporal no card da projeção deve distinguir claramente:
+  * eventos `realizado`: data real de liquidação
+  * eventos `previsto`/`confirmado`: data prevista de pagamento/liquidação
 * cálculo de resumo de disponibilidades é executado na camada de aplicação e não altera saldo real persistido
 * neste MVP, na confirmação de recorrência a UI edita apenas `documentDate` e `dueDate`; `plannedSettlementDate` é preenchida automaticamente com `dueDate` e o ajuste manual dessa data ficará para fluxo futuro
 * validações mínimas na confirmação: `documentDate` não pode ser futura e `dueDate` não pode ser anterior a `documentDate`
@@ -850,6 +866,17 @@ Status técnico atual da projeção (MVP):
 * `Reverter cancelamento` restaura apenas o estado operacional para `previsto`; não reativa automaticamente `confirmado`/`realizado` e não apaga/sobrescreve histórico contábil
 * a projeção operacional deve ignorar vínculos contábeis já revertidos e considerar apenas estado funcional consolidado do evento
 * a resolução de estado funcional/capacidades operacionais deve ser canônica na camada de aplicação, evitando deduções paralelas na UI por `type/status` técnico
+* para eventos `confirmado`, a projeção deve permitir ação operacional de `Adiar pagamento`, atualizando apenas `plannedSettlementDate` (sem novo `LedgerEntry`)
+* conferência operacional para eventos `realizado`:
+  * campos: `isVerified`, `verifiedAt`, `verifiedByUserId`
+  * `Conferido` é marcador operacional (não cria lançamento contábil)
+  * evento conferido deve bloquear, no fluxo operacional padrão, o estorno de liquidação
+  * evento conferido deve bloquear, no fluxo operacional padrão, o cancelamento operacional da ocorrência
+  * conferência pode ser desfeita operacionalmente (`isVerified = false`) quando necessário
+* padrão visual operacional atualmente adotado na `/projection`:
+  * múltiplas ações do card agrupadas em menu contextual sobreposto (`⋮`)
+  * o menu é controle do card (não conteúdo que altera altura da listagem)
+  * o estado de conferência deve possuir indicador visual claro e de leitura rápida no card
 
 ---
 
