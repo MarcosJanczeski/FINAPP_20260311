@@ -14,8 +14,10 @@ export type PlanningEventOperationalState =
 export interface PlanningEventOperationalCapabilities {
   isCancelable: boolean;
   isCancelReversible: boolean;
+  isVerifiable: boolean;
   canReverseSettlement: boolean;
   canReverseConfirmation: boolean;
+  canPostponeSettlement: boolean;
 }
 
 export interface PlanningEventOperationalSnapshot {
@@ -79,16 +81,22 @@ function resolveCapabilities(
   const isCancelable =
     isRecurrence &&
     state !== 'cancelado' &&
+    !(state === 'realizado' && event.isVerified) &&
     (state === 'previsto' || state === 'confirmado' || state === 'realizado');
   const isCancelReversible = isRecurrence && state === 'cancelado' && event.type === 'previsto_recorrencia';
-  const canReverseSettlement = state === 'realizado' && input.activeSettlement > 0;
+  const isVerifiable = state === 'realizado';
+  const canReverseSettlement = state === 'realizado' && input.activeSettlement > 0 && !event.isVerified;
   const canReverseConfirmation = state === 'confirmado' && input.activeRecognition > 0;
+  const canPostponeSettlement =
+    state === 'confirmado' && event.status !== 'canceled' && event.sourceType === 'recurrence';
 
   return {
     isCancelable,
     isCancelReversible,
+    isVerifiable,
     canReverseSettlement,
     canReverseConfirmation,
+    canPostponeSettlement,
   };
 }
 

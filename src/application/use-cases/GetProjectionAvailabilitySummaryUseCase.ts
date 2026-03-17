@@ -11,6 +11,7 @@ interface ProjectionAvailabilitySummary {
   baseBalanceCents: number;
   projectedInflowsCents: number;
   projectedOutflowsCents: number;
+  lowestProjectedBalanceCents: number;
   projectedFinalBalanceCents: number;
   consideredEventsCount: number;
 }
@@ -35,6 +36,10 @@ function isAvailabilityAccount(account: Account): boolean {
   return account.type === 'cash' || account.type === 'checking' || account.type === 'digital';
 }
 
+function getCashFlowDate(event: PlanningEvent): Date {
+  return new Date(event.settlementDate ?? event.plannedSettlementDate);
+}
+
 function isProjectedEvent(event: PlanningEvent, windowStart: Date, windowEnd: Date): boolean {
   if (event.status !== 'active' && event.status !== 'confirmed') {
     return false;
@@ -44,7 +49,7 @@ function isProjectedEvent(event: PlanningEvent, windowStart: Date, windowEnd: Da
     return false;
   }
 
-  const date = new Date(event.dueDate);
+  const date = getCashFlowDate(event);
   return date >= windowStart && date <= windowEnd;
 }
 
@@ -88,6 +93,19 @@ export class GetProjectionAvailabilitySummaryUseCase {
     const projectedOutflowsCents = consideredEvents
       .filter((event) => event.direction === 'outflow')
       .reduce((sum, event) => sum + event.amountCents, 0);
+    const runningBalanceBySettlementDate = [...consideredEvents]
+      .sort((a, b) => getCashFlowDate(a).getTime() - getCashFlowDate(b).getTime())
+      .reduce(
+        (state, event) => {
+          const delta = event.direction === 'inflow' ? event.amountCents : -event.amountCents;
+          const nextBalance = state.currentBalance + delta;
+          return {
+            currentBalance: nextBalance,
+            lowestBalance: Math.min(state.lowestBalance, nextBalance),
+          };
+        },
+        { currentBalance: baseBalanceCents, lowestBalance: baseBalanceCents },
+      );
 
     return {
       windowStart: windowStart.toISOString(),
@@ -95,6 +113,7 @@ export class GetProjectionAvailabilitySummaryUseCase {
       baseBalanceCents,
       projectedInflowsCents,
       projectedOutflowsCents,
+      lowestProjectedBalanceCents: runningBalanceBySettlementDate.lowestBalance,
       projectedFinalBalanceCents: baseBalanceCents + projectedInflowsCents - projectedOutflowsCents,
       consideredEventsCount: consideredEvents.length,
     };

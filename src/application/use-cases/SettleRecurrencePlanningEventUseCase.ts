@@ -120,7 +120,10 @@ export class SettleRecurrencePlanningEventUseCase {
       type: 'realizado',
       status: 'posted',
       date: input.settlementDate,
-      plannedSettlementDate: input.settlementDate,
+      settlementDate: input.settlementDate,
+      isVerified: false,
+      verifiedAt: null,
+      verifiedByUserId: null,
       amountCents: input.settlementAmountCents,
       ledgerLinks: [
         ...event.ledgerLinks,

@@ -22,6 +22,9 @@ export class ReverseRecurrenceSettlementUseCase {
     if (!event || event.controlCenterId !== input.controlCenterId) {
       throw new Error('Evento de recorrencia nao encontrado.');
     }
+    if (event.isVerified) {
+      throw new Error('Evento conferido nao permite estorno de liquidacao.');
+    }
 
     const activeSettlement = await resolveActiveLedgerLink(this.ledgerEntryRepository, {
       event,
@@ -53,6 +56,10 @@ export class ReverseRecurrenceSettlementUseCase {
       ...event,
       type: 'confirmado_agendado',
       status: 'confirmed',
+      settlementDate: null,
+      isVerified: false,
+      verifiedAt: null,
+      verifiedByUserId: null,
       ledgerLinks: [
         ...event.ledgerLinks,
         {

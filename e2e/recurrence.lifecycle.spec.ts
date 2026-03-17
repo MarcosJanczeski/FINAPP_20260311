@@ -15,6 +15,7 @@ type DevBridgeAction =
   | 'listPlanningEvents'
   | 'confirmRecurrencePlanningEvent'
   | 'settleRecurrencePlanningEvent'
+  | 'verifyPlanningEvent'
   | 'reverseRecurrenceSettlement'
   | 'reverseRecurrenceConfirmation'
   | 'revertRecurrenceOccurrenceCancellation'
@@ -57,6 +58,11 @@ interface PlanningEvent {
   status: 'active' | 'confirmed' | 'posted' | 'canceled';
   amountCents: number;
   dueDate: string;
+  plannedSettlementDate: string;
+  settlementDate?: string | null;
+  isVerified?: boolean;
+  verifiedAt?: string | null;
+  verifiedByUserId?: string | null;
   ledgerLinks: PlanningEventLink[];
 }
 
@@ -73,6 +79,7 @@ interface ProjectionSummary {
   baseBalanceCents: number;
   projectedInflowsCents: number;
   projectedOutflowsCents: number;
+  lowestProjectedBalanceCents: number;
   projectedFinalBalanceCents: number;
   consideredEventsCount: number;
 }
@@ -104,6 +111,7 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
   const password = '123456';
   const recurrenceDescription = `Recorrencia Lifecycle ${nonce}`;
   const recurrenceSkipDescription = `Recorrencia Skip ${nonce}`;
+  const recurrenceVerifyDescription = `Recorrencia Verify ${nonce}`;
 
   const user = await invokeBridge<{ id: string }>(page, 'signUp', { email, password });
   const session = await invokeBridge<Session | null>(page, 'getCurrentSession');
@@ -147,6 +155,14 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
     dayOfMonth: todayDay,
     direction: 'outflow',
     amountCents: 21000,
+    status: 'active',
+  });
+  const recurrenceVerify = await invokeBridge<Recurrence>(page, 'upsertRecurrence', {
+    controlCenterId: controlCenter.id,
+    description: recurrenceVerifyDescription,
+    dayOfMonth: todayDay,
+    direction: 'outflow',
+    amountCents: 9500,
     status: 'active',
   });
 
@@ -570,6 +586,73 @@ test('recurrence lifecycle journey: previsto > confirmado > realizado > reversoe
   const storedRecurrenceSkip = recurrencesAfterSkip.find((item) => item.id === recurrenceSkip.id);
   expect(storedRecurrenceSkip?.status).toBe('active');
 
+  // Edge case 3) realizado -> conferir -> bloqueio de estorno da liquidação
+  await invokeBridge(page, 'syncPlanningEvents', { controlCenterId: controlCenter.id });
+  let verifyEvents = await loadRecurrenceEvents(page, controlCenter.id, recurrenceVerify.id);
+  let verifyEvent = pickCurrentPeriodEvent(verifyEvents, recurrenceVerifyDescription);
+
+  await invokeBridge(page, 'confirmRecurrencePlanningEvent', {
+    id: verifyEvent.id,
+    controlCenterId: controlCenter.id,
+    confirmedByUserId: user.id,
+    documentDate: lifecycleBaseDate,
+    dueDate: lifecycleBaseDate,
+    plannedSettlementDate: lifecycleBaseDate,
+    confirmedAmountCents: verifyEvent.amountCents,
+  });
+  verifyEvents = await loadRecurrenceEvents(page, controlCenter.id, recurrenceVerify.id);
+  verifyEvent = findById(verifyEvents, verifyEvent.id);
+  expect(verifyEvent.status).toBe('confirmed');
+
+  await invokeBridge(page, 'settleRecurrencePlanningEvent', {
+    id: verifyEvent.id,
+    controlCenterId: controlCenter.id,
+    settlementDate: lifecycleBaseDate,
+    settlementAmountCents: verifyEvent.amountCents,
+    settlementAccountId: account.id,
+    settledByUserId: user.id,
+  });
+  verifyEvents = await loadRecurrenceEvents(page, controlCenter.id, recurrenceVerify.id);
+  verifyEvent = findById(verifyEvents, verifyEvent.id);
+  expect(verifyEvent.status).toBe('posted');
+  expect(verifyEvent.isVerified).toBeFalsy();
+
+  await invokeBridge(page, 'verifyPlanningEvent', {
+    id: verifyEvent.id,
+    controlCenterId: controlCenter.id,
+    verifiedByUserId: user.id,
+  });
+  verifyEvents = await loadRecurrenceEvents(page, controlCenter.id, recurrenceVerify.id);
+  verifyEvent = findById(verifyEvents, verifyEvent.id);
+  expect(verifyEvent.isVerified).toBeTruthy();
+  expect(verifyEvent.verifiedAt).toBeTruthy();
+  expect(verifyEvent.verifiedByUserId).toBe(user.id);
+
+  const verifyLedgerBefore = await invokeBridge<LedgerEntry[]>(page, 'listLedgerEntries', {
+    controlCenterId: controlCenter.id,
+  });
+  const reverseAfterVerifyError = await expectBridgeFailure(page, 'reverseRecurrenceSettlement', {
+    id: verifyEvent.id,
+    controlCenterId: controlCenter.id,
+    reversedByUserId: user.id,
+  });
+  expect(reverseAfterVerifyError).toContain('Evento conferido nao permite estorno de liquidacao.');
+  const verifyLedgerAfter = await invokeBridge<LedgerEntry[]>(page, 'listLedgerEntries', {
+    controlCenterId: controlCenter.id,
+  });
+  expect(verifyLedgerAfter.length).toBe(verifyLedgerBefore.length);
+  verifyEvents = await loadRecurrenceEvents(page, controlCenter.id, recurrenceVerify.id);
+  verifyEvent = findById(verifyEvents, verifyEvent.id);
+  expect(await countActiveBaseLinks(page, controlCenter.id, verifyEvent, 'settlement')).toBe(1);
+  lifecycleReport.push(
+    await buildStepReport(page, controlCenter.id, verifyEvent, {
+      step: 'Edge 3) realizado -> conferir -> bloqueio de estorno',
+      expectedState: 'realizado',
+      projectionImpact: 'Evento conferido permanece realizado e bloqueia estorno da liquidação.',
+      status: 'PASS',
+    }),
+  );
+
   await emitLifecycleReport(testInfo, lifecycleReport);
 });
 
@@ -763,6 +846,7 @@ async function assertProjectionAggregates(
 
   const windowStart = new Date(summary.windowStart);
   const windowEnd = new Date(summary.windowEnd);
+  const cashFlowDate = (event: PlanningEvent) => new Date(event.settlementDate ?? event.plannedSettlementDate);
   const considered = allEvents.filter((event) => {
     if (event.status !== 'active' && event.status !== 'confirmed') {
       return false;
@@ -770,8 +854,8 @@ async function assertProjectionAggregates(
     if (event.type === 'realizado') {
       return false;
     }
-    const dueDate = new Date(event.dueDate);
-    return dueDate >= windowStart && dueDate <= windowEnd;
+    const flowDate = cashFlowDate(event);
+    return flowDate >= windowStart && flowDate <= windowEnd;
   });
 
   const inflows = considered
@@ -784,6 +868,20 @@ async function assertProjectionAggregates(
   expect(summary.consideredEventsCount).toBe(considered.length);
   expect(summary.projectedInflowsCents).toBe(inflows);
   expect(summary.projectedOutflowsCents).toBe(outflows);
+  const lowestProjectedBalance = [...considered]
+    .sort((a, b) => cashFlowDate(a).getTime() - cashFlowDate(b).getTime())
+    .reduce(
+      (state, event) => {
+        const delta = event.direction === 'inflow' ? event.amountCents : -event.amountCents;
+        const next = state.current + delta;
+        return {
+          current: next,
+          lowest: Math.min(state.lowest, next),
+        };
+      },
+      { current: summary.baseBalanceCents, lowest: summary.baseBalanceCents },
+    ).lowest;
+  expect(summary.lowestProjectedBalanceCents).toBe(lowestProjectedBalance);
   expect(summary.projectedFinalBalanceCents).toBe(
     summary.baseBalanceCents + summary.projectedInflowsCents - summary.projectedOutflowsCents,
   );

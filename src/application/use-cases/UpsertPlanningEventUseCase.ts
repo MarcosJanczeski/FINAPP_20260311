@@ -13,6 +13,10 @@ interface UpsertPlanningEventInput {
   documentDate?: ISODateString;
   dueDate: ISODateString;
   plannedSettlementDate?: ISODateString;
+  settlementDate?: ISODateString | null;
+  isVerified?: boolean;
+  verifiedAt?: ISODateString | null;
+  verifiedByUserId?: ID | null;
   description: string;
   type: PlanningEventType;
   status?: PlanningEventStatus;
@@ -42,6 +46,10 @@ export class UpsertPlanningEventUseCase {
       dueDate: input.dueDate,
       plannedSettlementDate:
         input.plannedSettlementDate ?? existing?.plannedSettlementDate ?? input.dueDate,
+      settlementDate: input.settlementDate ?? existing?.settlementDate ?? null,
+      isVerified: input.isVerified ?? existing?.isVerified ?? false,
+      verifiedAt: input.verifiedAt ?? existing?.verifiedAt ?? null,
+      verifiedByUserId: input.verifiedByUserId ?? existing?.verifiedByUserId ?? null,
       description: input.description.trim(),
       type: input.type,
       status: input.status ?? existing?.status ?? 'active',

@@ -27,6 +27,9 @@ import { ReverseRecurrenceSettlementUseCase } from '../application/use-cases/Rev
 import { SettleRecurrencePlanningEventUseCase } from '../application/use-cases/SettleRecurrencePlanningEventUseCase';
 import { CancelRecurrencePlanningEventOccurrenceUseCase } from '../application/use-cases/CancelRecurrencePlanningEventOccurrenceUseCase';
 import { RevertRecurrenceOccurrenceCancellationUseCase } from '../application/use-cases/RevertRecurrenceOccurrenceCancellationUseCase';
+import { PostponePlanningEventSettlementUseCase } from '../application/use-cases/PostponePlanningEventSettlementUseCase';
+import { VerifyPlanningEventUseCase } from '../application/use-cases/VerifyPlanningEventUseCase';
+import { UnverifyPlanningEventUseCase } from '../application/use-cases/UnverifyPlanningEventUseCase';
 import { GetAccountAvailabilityStatementUseCase } from '../application/use-cases/GetAccountAvailabilityStatementUseCase';
 import { GetProjectionAvailabilitySummaryUseCase } from '../application/use-cases/GetProjectionAvailabilitySummaryUseCase';
 import {
@@ -62,6 +65,9 @@ export interface AppContainer {
     reverseRecurrenceConfirmation: ReverseRecurrenceConfirmationUseCase;
     reverseRecurrenceSettlement: ReverseRecurrenceSettlementUseCase;
     settleRecurrencePlanningEvent: SettleRecurrencePlanningEventUseCase;
+    postponePlanningEventSettlement: PostponePlanningEventSettlementUseCase;
+    verifyPlanningEvent: VerifyPlanningEventUseCase;
+    unverifyPlanningEvent: UnverifyPlanningEventUseCase;
     cancelRecurrencePlanningEventOccurrence: CancelRecurrencePlanningEventOccurrenceUseCase;
     revertRecurrenceOccurrenceCancellation: RevertRecurrenceOccurrenceCancellationUseCase;
     getAccountAvailabilityStatement: GetAccountAvailabilityStatementUseCase;
@@ -142,6 +148,11 @@ export function createAppContainer(): AppContainer {
       repositories.ledgerAccountRepository,
       repositories.ledgerEntryRepository,
     ),
+    postponePlanningEventSettlement: new PostponePlanningEventSettlementUseCase(
+      repositories.planningEventRepository,
+    ),
+    verifyPlanningEvent: new VerifyPlanningEventUseCase(repositories.planningEventRepository),
+    unverifyPlanningEvent: new UnverifyPlanningEventUseCase(repositories.planningEventRepository),
     cancelRecurrencePlanningEventOccurrence: new CancelRecurrencePlanningEventOccurrenceUseCase(
       repositories.planningEventRepository,
       new ReverseRecurrenceConfirmationUseCase(

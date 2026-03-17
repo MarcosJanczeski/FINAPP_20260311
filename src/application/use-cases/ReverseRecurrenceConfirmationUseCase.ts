@@ -38,6 +38,9 @@ export class ReverseRecurrenceConfirmationUseCase {
       reversalRelations: ['settlement_reversal'],
     });
     if (activeSettlement.link && activeSettlement.entry) {
+      if (event.isVerified) {
+        throw new Error('Evento conferido nao permite estorno de liquidacao.');
+      }
       const settlementReversal = this.buildSettlementReversalEntry(
         activeSettlement.entry,
         input.reversedByUserId,
@@ -77,6 +80,10 @@ export class ReverseRecurrenceConfirmationUseCase {
       ...event,
       type: targetState === 'canceled' ? 'previsto_recorrencia' : 'previsto_recorrencia',
       status: targetState === 'canceled' ? 'canceled' : 'active',
+      settlementDate: null,
+      isVerified: false,
+      verifiedAt: null,
+      verifiedByUserId: null,
       ledgerLinks: [
         ...newLinks,
         {

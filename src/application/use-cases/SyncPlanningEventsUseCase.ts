@@ -93,6 +93,10 @@ export class SyncPlanningEventsUseCase {
         dueDate: preserved?.dueDate ?? sourceItem.dueDate,
         plannedSettlementDate:
           preserved?.plannedSettlementDate ?? sourceItem.plannedSettlementDate,
+        settlementDate: preserved?.settlementDate ?? null,
+        isVerified: preserved?.isVerified ?? false,
+        verifiedAt: preserved?.verifiedAt ?? null,
+        verifiedByUserId: preserved?.verifiedByUserId ?? null,
         description: preserved?.description ?? sourceItem.description,
         type: normalizedType ?? sourceItem.type,
         status: normalizedStatus ?? sourceItem.status,

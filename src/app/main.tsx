@@ -51,6 +51,9 @@ function registerDevBridge(appContainer: AppContainer): void {
     | 'listPlanningEvents'
     | 'confirmRecurrencePlanningEvent'
     | 'settleRecurrencePlanningEvent'
+    | 'postponePlanningEventSettlement'
+    | 'verifyPlanningEvent'
+    | 'unverifyPlanningEvent'
     | 'reverseRecurrenceSettlement'
     | 'reverseRecurrenceConfirmation'
     | 'cancelRecurrencePlanningEventOccurrence'
@@ -99,6 +102,18 @@ function registerDevBridge(appContainer: AppContainer): void {
       case 'settleRecurrencePlanningEvent':
         return appContainer.useCases.settleRecurrencePlanningEvent.execute(
           payload as Parameters<AppContainer['useCases']['settleRecurrencePlanningEvent']['execute']>[0],
+        );
+      case 'postponePlanningEventSettlement':
+        return appContainer.useCases.postponePlanningEventSettlement.execute(
+          payload as Parameters<AppContainer['useCases']['postponePlanningEventSettlement']['execute']>[0],
+        );
+      case 'verifyPlanningEvent':
+        return appContainer.useCases.verifyPlanningEvent.execute(
+          payload as Parameters<AppContainer['useCases']['verifyPlanningEvent']['execute']>[0],
+        );
+      case 'unverifyPlanningEvent':
+        return appContainer.useCases.unverifyPlanningEvent.execute(
+          payload as Parameters<AppContainer['useCases']['unverifyPlanningEvent']['execute']>[0],
         );
       case 'reverseRecurrenceSettlement':
         return appContainer.useCases.reverseRecurrenceSettlement.execute(

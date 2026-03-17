@@ -20,6 +20,7 @@ interface ProjectionAvailabilitySummaryView {
   baseBalanceCents: number;
   projectedInflowsCents: number;
   projectedOutflowsCents: number;
+  lowestProjectedBalanceCents: number;
   projectedFinalBalanceCents: number;
   consideredEventsCount: number;
 }
@@ -35,6 +36,7 @@ export function ProjectionPage() {
   const [controlCenterId, setControlCenterId] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [settlementEventId, setSettlementEventId] = useState<string | null>(null);
+  const [postponeEventId, setPostponeEventId] = useState<string | null>(null);
   const [documentDate, setDocumentDate] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [confirmedAmountCents, setConfirmedAmountCents] = useState(0);
@@ -42,6 +44,7 @@ export function ProjectionPage() {
   const [settlementAmountCents, setSettlementAmountCents] = useState(0);
   const [settlementAccountId, setSettlementAccountId] = useState('');
   const [settlementMemo, setSettlementMemo] = useState('');
+  const [postponeSettlementDate, setPostponeSettlementDate] = useState('');
   const [availableSettlementAccounts, setAvailableSettlementAccounts] = useState<Account[]>([]);
   const [availabilitySummary, setAvailabilitySummary] =
     useState<ProjectionAvailabilitySummaryView | null>(null);
@@ -55,6 +58,8 @@ export function ProjectionPage() {
   const confirmDocumentInputRef = useRef<HTMLInputElement | null>(null);
   const settlementSectionRef = useRef<HTMLElement | null>(null);
   const settlementAccountSelectRef = useRef<HTMLSelectElement | null>(null);
+  const postponeSectionRef = useRef<HTMLElement | null>(null);
+  const postponeDateInputRef = useRef<HTMLInputElement | null>(null);
   const todayInputDate = useMemo(() => {
     const now = new Date();
     const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -83,15 +88,35 @@ export function ProjectionPage() {
     () => events.find((event) => event.id === selectedEventId) ?? null,
     [events, selectedEventId],
   );
+  const getCashFlowDate = (event: PlanningEventListItem): string =>
+    event.settlementDate ?? event.plannedSettlementDate;
+  const getTemporalLabel = (event: PlanningEventListItem): string =>
+    event.operationalState === 'realizado' ? 'Liquidado em' : 'Prev. pagamento';
+  const getTemporalDate = (event: PlanningEventListItem): string =>
+    event.operationalState === 'realizado'
+      ? event.settlementDate ?? event.plannedSettlementDate
+      : event.plannedSettlementDate;
+
   const visibleEvents = useMemo(() => {
     return events.filter((event) => {
       const state = event.operationalState;
       return filters[state as keyof typeof filters];
+    }).sort((a, b) => {
+      const cashFlowDateA = getCashFlowDate(a);
+      const cashFlowDateB = getCashFlowDate(b);
+      if (cashFlowDateA === cashFlowDateB) {
+        return a.dueDate > b.dueDate ? 1 : -1;
+      }
+      return cashFlowDateA > cashFlowDateB ? 1 : -1;
     });
   }, [events, filters]);
   const settlementEvent = useMemo(
     () => events.find((event) => event.id === settlementEventId) ?? null,
     [events, settlementEventId],
+  );
+  const postponeEvent = useMemo(
+    () => events.find((event) => event.id === postponeEventId) ?? null,
+    [events, postponeEventId],
   );
 
   function functionalStateLabel(event: PlanningEventListItem): string {
@@ -217,11 +242,21 @@ export function ProjectionPage() {
     settlementAccountSelectRef.current?.focus();
   }, [settlementEvent]);
 
+  useEffect(() => {
+    if (!postponeEvent) {
+      return;
+    }
+
+    postponeSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    postponeDateInputRef.current?.focus();
+  }, [postponeEvent]);
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const startConfirm = (event: PlanningEventListItem) => {
+    setPostponeEventId(null);
     setSettlementEventId(null);
     setSelectedEventId(event.id);
     setDocumentDate(todayInputDate);
@@ -240,6 +275,7 @@ export function ProjectionPage() {
   };
 
   const startSettlement = (event: PlanningEventListItem) => {
+    setPostponeEventId(null);
     setSelectedEventId(null);
     setSettlementEventId(event.id);
     setSettlementDate(todayInputDate);
@@ -256,6 +292,21 @@ export function ProjectionPage() {
     setSettlementAmountCents(0);
     setSettlementAccountId('');
     setSettlementMemo('');
+    scrollToTop();
+  };
+
+  const startPostponeSettlement = (event: PlanningEventListItem) => {
+    setSelectedEventId(null);
+    setSettlementEventId(null);
+    setPostponeEventId(event.id);
+    setPostponeSettlementDate(isoDateToInputValue(event.plannedSettlementDate));
+    setError(null);
+    setSuccess(null);
+  };
+
+  const cancelPostponeSettlement = () => {
+    setPostponeEventId(null);
+    setPostponeSettlementDate('');
     scrollToTop();
   };
 
@@ -374,6 +425,48 @@ export function ProjectionPage() {
     }
   };
 
+  const handleToggleVerification = async (
+    planningEvent: PlanningEventListItem,
+    nextVerified: boolean,
+  ) => {
+    if (!controlCenterId || !session) {
+      setError('Sessao ou centro de controle nao identificado.');
+      return;
+    }
+
+    setError(null);
+    setSuccess(null);
+    setIsSaving(true);
+
+    try {
+      if (nextVerified) {
+        await container.useCases.verifyPlanningEvent.execute({
+          id: planningEvent.id,
+          controlCenterId,
+          verifiedByUserId: session.userId,
+        });
+      } else {
+        await container.useCases.unverifyPlanningEvent.execute({
+          id: planningEvent.id,
+          controlCenterId,
+        });
+      }
+      await refresh();
+      setSuccess(
+        nextVerified ? 'Evento marcado como conferido.' : 'Conferência do evento desfeita.',
+      );
+      scrollToTop();
+    } catch (currentError) {
+      setError(
+        currentError instanceof Error
+          ? currentError.message
+          : 'Falha ao atualizar conferência do evento.',
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleCancelOccurrence = async (planningEvent: PlanningEventListItem) => {
     if (!controlCenterId || !session) {
       setError('Sessao ou centro de controle nao identificado.');
@@ -401,6 +494,7 @@ export function ProjectionPage() {
       setSuccess('Ocorrencia cancelada para este periodo com sucesso.');
       setSelectedEventId(null);
       setSettlementEventId(null);
+      setPostponeEventId(null);
       scrollToTop();
     } catch (currentError) {
       setError(
@@ -490,6 +584,36 @@ export function ProjectionPage() {
     }
   };
 
+  const handlePostponeSettlement = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!controlCenterId || !postponeEvent || !postponeSettlementDate) {
+      setError('Dados de adiamento invalidos.');
+      return;
+    }
+
+    setError(null);
+    setSuccess(null);
+    setIsSaving(true);
+
+    try {
+      await container.useCases.postponePlanningEventSettlement.execute({
+        id: postponeEvent.id,
+        controlCenterId,
+        plannedSettlementDate: inputValueToIsoDateAtNoonUtc(postponeSettlementDate),
+      });
+      await refresh();
+      setSuccess('Pagamento adiado com sucesso. O compromisso permaneceu confirmado.');
+      cancelPostponeSettlement();
+      scrollToTop();
+    } catch (currentError) {
+      setError(
+        currentError instanceof Error ? currentError.message : 'Falha ao adiar pagamento.',
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <RoutePlaceholder
       title="Projecao"
@@ -520,6 +644,9 @@ export function ProjectionPage() {
             </li>
             <li>
               Saidas projetadas: {formatCurrencyFromCents(availabilitySummary.projectedOutflowsCents)}
+            </li>
+            <li>
+              Menor saldo projetado: {formatCurrencyFromCents(availabilitySummary.lowestProjectedBalanceCents)}
             </li>
             <li>
               Saldo projetado final:{' '}
@@ -605,11 +732,16 @@ export function ProjectionPage() {
                     gap: '0.35rem',
                   }}
                 >
-                  <strong style={{ fontSize: '0.95rem' }}>{formatDatePtBrFromIso(event.dueDate)}</strong>
+                  <strong style={{ fontSize: '0.95rem' }}>
+                    {getTemporalLabel(event)}: {formatDatePtBrFromIso(getTemporalDate(event))}
+                  </strong>
                   <span style={{ textTransform: 'capitalize', color: tone.stateColor, fontWeight: 600 }}>
                     {stateDisplayLabel(event)}
                   </span>
                   <span style={{ color: '#222' }}>{event.description}</span>
+                  <span style={{ color: '#555' }}>
+                    Vencimento: {formatDatePtBrFromIso(event.dueDate)}
+                  </span>
                   <strong
                     style={{
                       fontWeight: tone.valueWeight,
@@ -619,9 +751,27 @@ export function ProjectionPage() {
                     {formatDirectionalValue(event)}
                   </strong>
 
+                  {event.isVerifiable ? (
+                    <label
+                      htmlFor={`projection-verified-${event.id}`}
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem' }}
+                    >
+                      <input
+                        id={`projection-verified-${event.id}`}
+                        type="checkbox"
+                        checked={Boolean(event.isVerified)}
+                        onChange={(next) =>
+                          void handleToggleVerification(event, next.currentTarget.checked)
+                        }
+                        disabled={isSaving}
+                      />
+                      Conferido
+                    </label>
+                  ) : null}
+
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.2rem' }}>
                     {canConfirmOccurrence(event) ? (
-                      <button type="button" onClick={() => startConfirm(event)}>
+                      <button type="button" onClick={() => startConfirm(event)} disabled={isSaving}>
                         Confirmar recorrencia
                       </button>
                     ) : null}
@@ -632,6 +782,15 @@ export function ProjectionPage() {
                         disabled={isSaving}
                       >
                         {event.direction === 'outflow' ? 'Marcar como pago' : 'Marcar como recebido'}
+                      </button>
+                    ) : null}
+                    {event.canPostponeSettlement ? (
+                      <button
+                        type="button"
+                        onClick={() => startPostponeSettlement(event)}
+                        disabled={isSaving}
+                      >
+                        Adiar pagamento
                       </button>
                     ) : null}
                     {event.canReverseConfirmation ? (
@@ -774,6 +933,36 @@ export function ProjectionPage() {
                 {isSaving ? 'Liquidando...' : 'Confirmar liquidacao'}
               </button>
               <button type="button" onClick={cancelSettlement} disabled={isSaving}>
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </section>
+      ) : null}
+
+      {postponeEvent ? (
+        <section ref={postponeSectionRef} style={{ marginTop: '1rem' }}>
+          <h2>Adiar pagamento de compromisso confirmado</h2>
+          <p>{postponeEvent.description}</p>
+          <form
+            onSubmit={handlePostponeSettlement}
+            style={{ display: 'grid', gap: '0.5rem', maxWidth: 420 }}
+          >
+            <label htmlFor="postpone-settlement-date">Nova data prevista de liquidação</label>
+            <input
+              id="postpone-settlement-date"
+              type="date"
+              ref={postponeDateInputRef}
+              value={postponeSettlementDate}
+              onChange={(event) => setPostponeSettlementDate(event.target.value)}
+              required
+            />
+
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button type="submit" disabled={isSaving}>
+                {isSaving ? 'Salvando...' : 'Confirmar adiamento'}
+              </button>
+              <button type="button" onClick={cancelPostponeSettlement} disabled={isSaving}>
                 Cancelar
               </button>
             </div>

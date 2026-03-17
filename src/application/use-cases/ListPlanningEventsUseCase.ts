@@ -10,8 +10,10 @@ export interface PlanningEventListItem extends PlanningEvent {
   operationalState: PlanningEventOperationalState;
   isCancelable: boolean;
   isCancelReversible: boolean;
+  isVerifiable: boolean;
   canReverseSettlement: boolean;
   canReverseConfirmation: boolean;
+  canPostponeSettlement: boolean;
 }
 
 export class ListPlanningEventsUseCase {
@@ -26,8 +28,10 @@ export class ListPlanningEventsUseCase {
         operationalState: snapshot.state,
         isCancelable: snapshot.capabilities.isCancelable,
         isCancelReversible: snapshot.capabilities.isCancelReversible,
+        isVerifiable: snapshot.capabilities.isVerifiable,
         canReverseSettlement: snapshot.capabilities.canReverseSettlement,
         canReverseConfirmation: snapshot.capabilities.canReverseConfirmation,
+        canPostponeSettlement: snapshot.capabilities.canPostponeSettlement,
       };
     });
   }

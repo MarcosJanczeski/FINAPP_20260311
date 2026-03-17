@@ -70,6 +70,10 @@ export class ConfirmRecurrencePlanningEventUseCase {
       documentDate: input.documentDate,
       dueDate: input.dueDate,
       plannedSettlementDate: input.plannedSettlementDate,
+      settlementDate: null,
+      isVerified: false,
+      verifiedAt: null,
+      verifiedByUserId: null,
       amountCents: input.confirmedAmountCents,
       ledgerLinks: [
         ...event.ledgerLinks.filter((link) => link.relation !== 'recognition'),
