@@ -254,6 +254,7 @@ Status atual de implementação (MVP em desenvolvimento):
 ### Padrão de Telas Operacionais (mobile-first)
 
 Telas operacionais com listagem de itens e ações contextuais devem seguir padrão visual e funcional consistente, com prioridade para uso em telas pequenas.
+Este padrão é consolidado pelo conceito de **Operational Card**.
 
 Estrutura obrigatória:
 
@@ -263,12 +264,41 @@ Estrutura obrigatória:
 4. ações do item devem aparecer como CTAs contextuais no próprio card
 5. evitar poluição visual com excesso de botões e blocos técnicos misturados à listagem principal
 6. informações técnicas ou secundárias devem ficar em área separada, expansível ou em tela/bloco próprio
-7. quando um item possuir alta densidade de ações, priorizar até duas ações visíveis e agrupar as demais em menu contextual por item (ex.: botão `Ações`/`⋮`)
-8. menu contextual por item deve seguir comportamento padrão:
+7. todo Operational Card deve permitir compreender rapidamente:
+   - o que é
+   - quanto vale (quando aplicável)
+   - quando acontece
+   - em que estado está
+   - qual a próxima ação natural
+8. anatomia conceitual do Operational Card:
+   - identificação principal do item
+   - valor ou indicador principal, quando aplicável
+   - metadados essenciais
+   - estado
+   - ações principais
+   - área secundária/expansível para detalhes operacionais
+9. regra de densidade de ações:
+   - até 2 CTAs visíveis quando isso melhorar ação rápida sem poluição visual
+   - ações secundárias/destrutivas devem ir para menu contextual `⋮`
+   - quando houver alta densidade de ações, uso do menu contextual é obrigatório
+10. menu contextual por item deve seguir comportamento padrão:
    - abrir por clique no controle de ações
    - fechar ao clicar fora
    - fechar com `Esc`
    - ao abrir outro menu, o anterior deve fechar
+   - clicar em ação fecha o menu
+11. regra de expansão:
+   - cards iniciam colapsados por padrão
+   - expansão é opcional
+   - expansão deve trazer apenas detalhes secundários operacionais
+   - detalhes técnicos/contábeis extensos devem ficar em bloco ou tela própria
+12. consistência transversal obrigatória:
+   - o padrão de Operational Card deve ser aplicado em:
+     - contas
+     - cartões
+     - recorrências
+     - compromissos
+     - projeção
 
 Diretriz de referência:
 

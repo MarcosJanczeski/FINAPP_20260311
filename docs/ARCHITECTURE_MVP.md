@@ -318,6 +318,7 @@ No MVP atual, a presentation inclui página dedicada para razão contábil (`/le
 ### Padrão de composição para listagens operacionais (mobile-first)
 
 Telas da camada de presentation que combinam listagem de entidades com ações operacionais devem seguir padrão de composição visual reutilizável.
+Esse padrão deve ser tratado como **Operational Card Pattern** canônico na camada de presentation.
 
 Estrutura padrão:
 
@@ -325,18 +326,43 @@ a. cabeçalho com contexto da tela e CTA primário de criação
 b. lista principal em cards
 c. cada card deve conter:
    - identificação principal do item
+   - valor ou indicador principal, quando aplicável
    - metadados essenciais
-   - status visual
-   - CTAs contextuais do item
-   - em cenários com muitas ações, aplicar progressive disclosure: CTAs prioritários visíveis + menu contextual para ações secundárias/destrutivas
+   - estado
+   - ações principais
+   - área secundária/expansível para detalhes operacionais
+   - objetivo funcional do card: permitir leitura rápida de
+     - o que é
+     - quanto vale (quando aplicável)
+     - quando acontece
+     - em que estado está
+     - qual a próxima ação natural
+   - regra de densidade de ações:
+     - até 2 CTAs visíveis quando isso melhorar ação rápida sem poluição visual
+     - ações secundárias/destrutivas devem ser agrupadas em menu contextual `⋮`
+     - em alta densidade de ações, menu contextual é obrigatório
    - quando houver menu contextual por item, o menu deve ser sobreposto (popover/dropdown) e não deve alterar a altura do card
    - comportamento padrão do menu contextual:
      - fechar ao clicar fora
      - fechar com `Esc`
      - abrir um novo menu fecha o anterior
      - clicar em ação fecha o menu
-d. blocos técnicos ou complementares (ex.: extrato detalhado, lançamentos relacionados, detalhes contábeis) não devem competir visualmente com a listagem principal e devem aparecer em área separada
-e. componentes de card e CTA devem ser reutilizáveis entre módulos para manter consistência
+d. regra de expansão:
+   - cards iniciam colapsados por padrão
+   - expansão é opcional
+   - expansão deve conter apenas detalhes secundários operacionais
+   - detalhes técnicos/contábeis extensos devem ficar em bloco ou tela própria
+e. separação de informação:
+   - card principal: dados operacionais para decisão rápida
+   - bloco secundário/tela própria: dados técnicos e contábeis de maior densidade
+f. consistência entre módulos:
+   - padrão transversal obrigatório para:
+     - contas
+     - cartões
+     - recorrências
+     - compromissos
+     - projeção
+g. componentes de card e CTA devem ser reutilizáveis entre módulos para manter consistência
 
 Objetivos do padrão:
 
