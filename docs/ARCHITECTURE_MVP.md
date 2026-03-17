@@ -312,6 +312,7 @@ No MVP atual, a presentation inclui página dedicada para razão contábil (`/le
 * listagem de `LedgerEntry` com visualização das `lines` (partidas) por lançamento
 * detalhamento por linha com conta, débito e crédito, priorizando leitura mobile-first
 * filtros básicos por tipo e texto
+* ordenação padrão por data/hora de registro (`createdAt`, desc), com opção de alternar para data do fato/evento (`date`)
 * ação de lançamento avançado preparada como botão/CTA (sem formulário fixo), abrindo painel sob demanda com fechamento pelo usuário nesta etapa
 
 ### Padrão de composição para listagens operacionais (mobile-first)
@@ -587,6 +588,9 @@ Componentes técnicos mínimos (etapa atual):
 
 * `SyncPlanningEventsUseCase` para consolidar eventos automáticos de projeção
 * `GetProjectionAvailabilitySummaryUseCase` para consolidar resumo de saldo projetado de disponibilidades
+* resolvedor canônico de estado operacional e capacidades derivadas de `PlanningEvent` (puro, sem acesso a repositório/UI), recebendo o evento e contexto já carregado para produzir:
+  * estado operacional consolidado (`previsto`, `confirmado`, `realizado`, `cancelado`)
+  * capacidades derivadas (ex.: `isCancelable`, `isCancelReversible`, `canReverseSettlement`, `canReverseConfirmation`)
 * confirmação de recorrência já gera `LedgerEntry` de reconhecimento com referência auditável
 * providers de origem (recorrência/margem) desacoplados via contrato
 * provider real de recorrência mensal ativo; provider de margem permanece em `noop` nesta etapa
@@ -598,6 +602,7 @@ Componentes técnicos mínimos (etapa atual):
 * classificação de evento realizado deve considerar liquidação ativa (liquidação sem estorno correspondente), evitando marcar como `realizado` eventos já estornados
 * projeção deve refletir estado funcional final consolidado; histórico contábil revertido não deve gerar presença operacional ativa indevida
 * listagem padrão da projeção pode ocultar eventos `canceled` para reduzir ruído operacional, mantendo rastreabilidade em persistência
+* projeção deve permitir visualização secundária de cancelados e ação explícita de `Reverter cancelamento`, retornando a ocorrência cancelada para estado operacional `previsto`, quando elegível
 * conversões de data na projeção devem usar formato estável (`YYYY-MM-DD` + horário neutro) para evitar deslocamento de um dia por fuso horário
 
 ---

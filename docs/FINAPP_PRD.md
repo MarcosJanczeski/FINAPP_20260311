@@ -844,8 +844,12 @@ Status técnico atual da projeção (MVP):
 * cálculo de resumo de disponibilidades é executado na camada de aplicação e não altera saldo real persistido
 * neste MVP, na confirmação de recorrência a UI edita apenas `documentDate` e `dueDate`; `plannedSettlementDate` é preenchida automaticamente com `dueDate` e o ajuste manual dessa data ficará para fluxo futuro
 * validações mínimas na confirmação: `documentDate` não pode ser futura e `dueDate` não pode ser anterior a `documentDate`
-* a listagem padrão da projeção exibe eventos não cancelados (`active`/`confirmed`), preservando `canceled` para rastreabilidade técnica
+* a listagem padrão da projeção exibe eventos operacionais não cancelados, preservando `canceled` fora da lista principal por padrão
+* a projeção deve oferecer visualização secundária de cancelados (ex.: filtro de estado), com rotulagem explícita de cancelamento no período
+* quando elegível, a projeção deve permitir `Reverter cancelamento`, retornando a ocorrência cancelada para estado operacional `previsto`
+* `Reverter cancelamento` restaura apenas o estado operacional para `previsto`; não reativa automaticamente `confirmado`/`realizado` e não apaga/sobrescreve histórico contábil
 * a projeção operacional deve ignorar vínculos contábeis já revertidos e considerar apenas estado funcional consolidado do evento
+* a resolução de estado funcional/capacidades operacionais deve ser canônica na camada de aplicação, evitando deduções paralelas na UI por `type/status` técnico
 
 ---
 
@@ -865,6 +869,7 @@ Tela de lançamentos contábeis:
 * cabeçalho mínimo por lançamento: data, descrição, tipo, referência e valor do lançamento
 * detalhamento obrigatório das partidas: conta contábil (`código - nome`), débito e crédito em cada linha do lançamento
 * filtros mínimos: tipo de lançamento e texto (descrição/referência)
+* ordenação padrão do razão: ordem de registro do lançamento (`createdAt`, mais recente primeiro), com opção de ordenação por data do fato/evento (`date`)
 * ação de "novo lançamento avançado" por botão na tela (não formulário fixo), abrindo painel sob demanda com fechamento pelo usuário nesta etapa
 
 Plano de contas básico por centro de controle:
