@@ -27,6 +27,7 @@ export function LedgerPage() {
 
   const [typeFilter, setTypeFilter] = useState<'all' | LedgerEntry['referenceType']>('all');
   const [textFilter, setTextFilter] = useState('');
+  const [sortBy, setSortBy] = useState<'createdAt' | 'date'>('createdAt');
 
   useEffect(() => {
     if (!session) {
@@ -79,8 +80,15 @@ export function LedgerPage() {
           entry.referenceId.toLowerCase().includes(normalized)
         );
       })
-      .sort((a, b) => (a.date > b.date ? -1 : 1));
-  }, [entries, typeFilter, textFilter]);
+      .sort((a, b) => {
+        const left = sortBy === 'createdAt' ? a.createdAt : a.date;
+        const right = sortBy === 'createdAt' ? b.createdAt : b.date;
+        if (left === right) {
+          return a.id > b.id ? -1 : 1;
+        }
+        return left > right ? -1 : 1;
+      });
+  }, [entries, typeFilter, textFilter, sortBy]);
 
   const ledgerAccountById = useMemo(() => {
     return new Map(ledgerAccounts.map((account) => [account.id, account]));
@@ -127,6 +135,16 @@ export function LedgerPage() {
           placeholder="Digite para filtrar"
         />
 
+        <label htmlFor="ledger-sort-filter">Ordenação</label>
+        <select
+          id="ledger-sort-filter"
+          value={sortBy}
+          onChange={(event) => setSortBy(event.target.value as typeof sortBy)}
+        >
+          <option value="createdAt">Registro (mais recente primeiro)</option>
+          <option value="date">Data do fato/evento (mais recente primeiro)</option>
+        </select>
+
         <button type="button" onClick={() => setIsAdvancedOpen(true)}>
           Novo lançamento avançado
         </button>
@@ -155,6 +173,9 @@ export function LedgerPage() {
                   <div style={{ display: 'grid', gap: '0.25rem' }}>
                     <span style={{ fontWeight: 700 }}>
                       {new Date(entry.date).toLocaleDateString('pt-BR')}
+                    </span>
+                    <span style={{ color: '#555' }}>
+                      Registrado em: {new Date(entry.createdAt).toLocaleDateString('pt-BR')}
                     </span>
                     <strong>{entry.description}</strong>
                     <span>

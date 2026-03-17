@@ -85,7 +85,7 @@ export function ProjectionPage() {
   );
   const visibleEvents = useMemo(() => {
     return events.filter((event) => {
-      const state = functionalStateLabel(event);
+      const state = event.operationalState;
       return filters[state as keyof typeof filters];
     });
   }, [events, filters]);
@@ -95,19 +95,7 @@ export function ProjectionPage() {
   );
 
   function functionalStateLabel(event: PlanningEventListItem): string {
-    if (event.operationalState) {
-      return event.operationalState;
-    }
-    if (event.status === 'canceled') {
-      return 'cancelado';
-    }
-    if (event.type === 'realizado') {
-      return 'realizado';
-    }
-    if (event.type === 'confirmado_agendado') {
-      return 'confirmado';
-    }
-    return 'previsto';
+    return event.operationalState;
   }
 
   const sourceLabel = (event: PlanningEventListItem): string => {
@@ -174,6 +162,12 @@ export function ProjectionPage() {
     const signal = event.direction === 'inflow' ? '+' : '-';
     return `${signal} ${formatCurrencyFromCents(event.amountCents)}`;
   };
+
+  const canConfirmOccurrence = (event: PlanningEventListItem): boolean =>
+    event.sourceType === 'recurrence' && event.operationalState === 'previsto';
+
+  const canSettleOccurrence = (event: PlanningEventListItem): boolean =>
+    event.operationalState === 'confirmado';
 
   useEffect(() => {
     if (!session) {
@@ -626,12 +620,12 @@ export function ProjectionPage() {
                   </strong>
 
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.2rem' }}>
-                    {event.type === 'previsto_recorrencia' && event.status === 'active' ? (
+                    {canConfirmOccurrence(event) ? (
                       <button type="button" onClick={() => startConfirm(event)}>
                         Confirmar recorrencia
                       </button>
                     ) : null}
-                    {event.type === 'confirmado_agendado' && event.status === 'confirmed' ? (
+                    {canSettleOccurrence(event) ? (
                       <button
                         type="button"
                         onClick={() => startSettlement(event)}
