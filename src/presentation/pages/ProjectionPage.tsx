@@ -37,6 +37,7 @@ export function ProjectionPage() {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [settlementEventId, setSettlementEventId] = useState<string | null>(null);
   const [postponeEventId, setPostponeEventId] = useState<string | null>(null);
+  const [openActionsEventId, setOpenActionsEventId] = useState<string | null>(null);
   const [documentDate, setDocumentDate] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [confirmedAmountCents, setConfirmedAmountCents] = useState(0);
@@ -60,6 +61,7 @@ export function ProjectionPage() {
   const settlementAccountSelectRef = useRef<HTMLSelectElement | null>(null);
   const postponeSectionRef = useRef<HTMLElement | null>(null);
   const postponeDateInputRef = useRef<HTMLInputElement | null>(null);
+  const actionsMenuRef = useRef<HTMLDivElement | null>(null);
   const todayInputDate = useMemo(() => {
     const now = new Date();
     const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -194,6 +196,68 @@ export function ProjectionPage() {
   const canSettleOccurrence = (event: PlanningEventListItem): boolean =>
     event.operationalState === 'confirmado';
 
+  const getEventActions = (event: PlanningEventListItem): Array<{
+    key: string;
+    label: string;
+    onClick: () => void;
+  }> => {
+    const actions: Array<{ key: string; label: string; onClick: () => void }> = [];
+    if (canConfirmOccurrence(event)) {
+      actions.push({
+        key: 'confirm',
+        label: 'Confirmar recorrencia',
+        onClick: () => startConfirm(event),
+      });
+    }
+    if (canSettleOccurrence(event)) {
+      actions.push({
+        key: 'settle',
+        label: event.direction === 'outflow' ? 'Marcar como pago' : 'Marcar como recebido',
+        onClick: () => startSettlement(event),
+      });
+    }
+    if (event.canPostponeSettlement) {
+      actions.push({
+        key: 'postpone',
+        label: 'Adiar pagamento',
+        onClick: () => startPostponeSettlement(event),
+      });
+    }
+    if (event.canReverseConfirmation) {
+      actions.push({
+        key: 'reverse-confirmation',
+        label: 'Voltar para previsão',
+        onClick: () => void handleReverseConfirmation(event),
+      });
+    }
+    if (event.canReverseSettlement) {
+      actions.push({
+        key: 'reverse-settlement',
+        label: 'Estornar liquidação',
+        onClick: () => void handleReverseSettlement(event),
+      });
+    }
+    if (event.isCancelable) {
+      actions.push({
+        key: 'cancel',
+        label: 'Cancelar ocorrência',
+        onClick: () => void handleCancelOccurrence(event),
+      });
+    }
+    if (event.isCancelReversible) {
+      actions.push({
+        key: 'revert-cancel',
+        label: 'Reverter cancelamento',
+        onClick: () => void handleRevertCancellation(event),
+      });
+    }
+    return actions;
+  };
+
+  const toggleActionsMenu = (eventId: string) => {
+    setOpenActionsEventId((current) => (current === eventId ? null : eventId));
+  };
+
   useEffect(() => {
     if (!session) {
       return;
@@ -250,6 +314,35 @@ export function ProjectionPage() {
     postponeSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     postponeDateInputRef.current?.focus();
   }, [postponeEvent]);
+
+  useEffect(() => {
+    if (!openActionsEventId) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (actionsMenuRef.current && target && !actionsMenuRef.current.contains(target)) {
+        setOpenActionsEventId(null);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpenActionsEventId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('touchstart', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchstart', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [openActionsEventId]);
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -720,6 +813,7 @@ export function ProjectionPage() {
           <ul style={{ display: 'grid', gap: '0.75rem', listStyle: 'none', padding: 0 }}>
             {visibleEvents.map((event) => {
               const tone = getVisualTone(event);
+              const actions = getEventActions(event);
               return (
                 <li
                   key={event.id}
@@ -728,10 +822,59 @@ export function ProjectionPage() {
                     background: tone.background,
                     borderRadius: 8,
                     padding: '0.75rem',
+                    paddingRight: '2.5rem',
                     display: 'grid',
                     gap: '0.35rem',
+                    position: 'relative',
                   }}
                 >
+                  {actions.length > 0 ? (
+                    <div
+                      ref={openActionsEventId === event.id ? actionsMenuRef : null}
+                      style={{ position: 'absolute', top: '0.5rem', right: '0.5rem' }}
+                    >
+                      <button
+                        type="button"
+                        aria-label={`Ações de ${event.description}`}
+                        onClick={() => toggleActionsMenu(event.id)}
+                        disabled={isSaving}
+                        style={{ minWidth: '2rem' }}
+                      >
+                        ⋮
+                      </button>
+                      {openActionsEventId === event.id ? (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: '2rem',
+                            right: 0,
+                            zIndex: 2,
+                            border: '1px solid #d7d7d7',
+                            borderRadius: 8,
+                            background: '#fff',
+                            padding: '0.35rem',
+                            display: 'grid',
+                            gap: '0.35rem',
+                            minWidth: 170,
+                          }}
+                        >
+                          {actions.map((action) => (
+                            <button
+                              key={action.key}
+                              type="button"
+                              onClick={() => {
+                                setOpenActionsEventId(null);
+                                action.onClick();
+                              }}
+                              disabled={isSaving}
+                            >
+                              {action.label}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
                   <strong style={{ fontSize: '0.95rem' }}>
                     {getTemporalLabel(event)}: {formatDatePtBrFromIso(getTemporalDate(event))}
                   </strong>
@@ -768,68 +911,6 @@ export function ProjectionPage() {
                       Conferido
                     </label>
                   ) : null}
-
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.2rem' }}>
-                    {canConfirmOccurrence(event) ? (
-                      <button type="button" onClick={() => startConfirm(event)} disabled={isSaving}>
-                        Confirmar recorrencia
-                      </button>
-                    ) : null}
-                    {canSettleOccurrence(event) ? (
-                      <button
-                        type="button"
-                        onClick={() => startSettlement(event)}
-                        disabled={isSaving}
-                      >
-                        {event.direction === 'outflow' ? 'Marcar como pago' : 'Marcar como recebido'}
-                      </button>
-                    ) : null}
-                    {event.canPostponeSettlement ? (
-                      <button
-                        type="button"
-                        onClick={() => startPostponeSettlement(event)}
-                        disabled={isSaving}
-                      >
-                        Adiar pagamento
-                      </button>
-                    ) : null}
-                    {event.canReverseConfirmation ? (
-                      <button
-                        type="button"
-                        onClick={() => void handleReverseConfirmation(event)}
-                        disabled={isSaving}
-                      >
-                        Voltar para previsão
-                      </button>
-                    ) : null}
-                    {event.canReverseSettlement ? (
-                      <button
-                        type="button"
-                        onClick={() => void handleReverseSettlement(event)}
-                        disabled={isSaving}
-                      >
-                        Estornar liquidação
-                      </button>
-                    ) : null}
-                    {event.isCancelable ? (
-                      <button
-                        type="button"
-                        onClick={() => void handleCancelOccurrence(event)}
-                        disabled={isSaving}
-                      >
-                        Cancelar ocorrência
-                      </button>
-                    ) : null}
-                    {event.isCancelReversible ? (
-                      <button
-                        type="button"
-                        onClick={() => void handleRevertCancellation(event)}
-                        disabled={isSaving}
-                      >
-                        Reverter cancelamento
-                      </button>
-                    ) : null}
-                  </div>
                 </li>
               );
             })}
