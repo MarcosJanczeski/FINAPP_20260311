@@ -60,6 +60,7 @@ export function AccountsPage() {
   const [adjustOpeningBalanceCents, setAdjustOpeningBalanceCents] = useState(0);
   const [adjustReason, setAdjustReason] = useState('');
   const [openActionsMenuAccountId, setOpenActionsMenuAccountId] = useState<string | null>(null);
+  const [expandedStatementLineIds, setExpandedStatementLineIds] = useState<Record<string, boolean>>({});
   const statementSectionRef = useRef<HTMLElement | null>(null);
 
   const selectedStatementAccount = useMemo(
@@ -70,6 +71,51 @@ export function AccountsPage() {
     () => accounts.find((account) => account.id === formAccountId) ?? null,
     [accounts, formAccountId],
   );
+  const statementGroups = useMemo(() => {
+    if (!availabilityStatement) {
+      return [];
+    }
+
+    const groups = new Map<
+      string,
+      {
+        dateLabel: string;
+        lines: AccountAvailabilityStatementDTO['lines'];
+        closingBalanceCents: number;
+      }
+    >();
+
+    for (const line of availabilityStatement.lines) {
+      const date = new Date(line.date);
+      const dateKey = date.toLocaleDateString('sv-SE');
+      const dateLabel = date.toLocaleDateString('pt-BR');
+      const group = groups.get(dateKey);
+
+      if (!group) {
+        groups.set(dateKey, {
+          dateLabel,
+          lines: [line],
+          closingBalanceCents: line.runningBalanceCents,
+        });
+        continue;
+      }
+
+      group.lines.push(line);
+      group.closingBalanceCents = line.runningBalanceCents;
+    }
+
+    return Array.from(groups.entries()).map(([dateKey, group]) => ({
+      dateKey,
+      ...group,
+    }));
+  }, [availabilityStatement]);
+
+  const toggleStatementLine = (lineKey: string) => {
+    setExpandedStatementLineIds((current) => ({
+      ...current,
+      [lineKey]: !current[lineKey],
+    }));
+  };
 
   const availableLedgerAccounts = useMemo(
     () => ledgerAccounts.filter((account) => account.kind === nature),
@@ -827,34 +873,104 @@ export function AccountsPage() {
               Conta: <strong>{availabilityStatement.account.name}</strong> ({availabilityStatement.account.nature})
             </p>
             <p>Base do saldo acumulado: somente lançamentos do LedgerEntry desta conta contábil vinculada.</p>
-            {availabilityStatement.lines.length === 0 ? (
+            {statementGroups.length === 0 ? (
               <p>Nenhum movimento contábil encontrado para esta conta.</p>
             ) : (
-              <ul style={{ display: 'grid', gap: '0.5rem', listStyle: 'none', padding: 0 }}>
-                {availabilityStatement.lines.map((line) => (
-                  <li
-                    key={`${line.ledgerEntryId}-${line.date}`}
+              <div style={{ display: 'grid', gap: '0.85rem' }}>
+                {statementGroups.map((group, index) => (
+                  <section
+                    key={group.dateKey}
                     style={{
-                      border: '1px solid #d7d7d7',
-                      borderRadius: 8,
-                      padding: '0.65rem',
+                      borderTop: index === 0 ? 'none' : '1px solid #e9ecef',
+                      paddingTop: index === 0 ? 0 : '0.55rem',
+                      marginTop: index === 0 ? 0 : '0.25rem',
                       display: 'grid',
-                      gap: '0.2rem',
+                      gap: '0.35rem',
                     }}
                   >
-                    <strong>{new Date(line.date).toLocaleDateString('pt-BR')}</strong>
-                    <span>{line.description}</span>
-                    <span>
-                      Movimento:{' '}
-                      {line.movementCents >= 0 ? '+' : '-'} {formatCurrencyFromCents(Math.abs(line.movementCents))}
-                    </span>
-                    <span>Saldo acumulado: {formatCurrencyFromCents(line.runningBalanceCents)}</span>
-                    <span style={{ color: '#555' }}>
-                      Ref: {line.referenceType} | {line.referenceId}
-                    </span>
-                  </li>
+                    <strong style={{ fontSize: '0.95rem' }}>{group.dateLabel}</strong>
+
+                    <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '0.3rem' }}>
+                      {group.lines.map((line, lineIndex) => (
+                        <li
+                          key={`${line.ledgerEntryId}-${line.date}`}
+                          style={{
+                            display: 'grid',
+                            gap: '0.15rem',
+                            fontSize: '0.88rem',
+                            background: lineIndex % 2 === 0 ? '#ffffff' : '#f7f8fa',
+                            borderRadius: 4,
+                            padding: '0.12rem 0.2rem',
+                          }}
+                        >
+                          {(() => {
+                            const lineKey = `${line.ledgerEntryId}-${line.date}`;
+                            const isExpanded = expandedStatementLineIds[lineKey] ?? false;
+                            const isLongDescription = line.description.length > 88;
+                            return (
+                              <>
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'flex-start',
+                                    gap: '0.75rem',
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      color: '#222',
+                                      display: '-webkit-box',
+                                      WebkitBoxOrient: 'vertical',
+                                      WebkitLineClamp: isExpanded ? 'unset' : 1,
+                                      overflow: isExpanded ? 'visible' : 'hidden',
+                                      textOverflow: isExpanded ? 'unset' : 'ellipsis',
+                                    }}
+                                  >
+                                    {line.description}
+                                  </span>
+                                  <strong
+                                    style={{
+                                      color: line.movementCents >= 0 ? '#1f6f8b' : '#a23b72',
+                                      whiteSpace: 'nowrap',
+                                    }}
+                                  >
+                                    {line.movementCents >= 0 ? '+' : '-'}{' '}
+                                    {formatCurrencyFromCents(Math.abs(line.movementCents))}
+                                  </strong>
+                                </div>
+                                {isLongDescription ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleStatementLine(lineKey)}
+                                    style={{
+                                      justifySelf: 'start',
+                                      border: 'none',
+                                      background: 'transparent',
+                                      color: '#4b5563',
+                                      padding: 0,
+                                      cursor: 'pointer',
+                                      fontSize: '0.78rem',
+                                    }}
+                                  >
+                                    {isExpanded ? 'ver menos' : 'ver mais'}
+                                  </button>
+                                ) : null}
+                              </>
+                            );
+                          })()}
+                        </li>
+                      ))}
+                    </ul>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', paddingTop: '0.15rem' }}>
+                      <strong style={{ color: '#4b5563', fontSize: '0.92rem' }}>Saldo final do dia</strong>
+                      <strong style={{ color: '#374151', fontSize: '0.95rem' }}>
+                        {formatCurrencyFromCents(group.closingBalanceCents)}
+                      </strong>
+                    </div>
+                  </section>
                 ))}
-              </ul>
+              </div>
             )}
           </div>
         ) : null}
