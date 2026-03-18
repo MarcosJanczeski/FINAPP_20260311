@@ -58,29 +58,30 @@ export class GetChartOfAccountsSetupUseCase {
       }
     }
 
+    const canonicalAccounts = this.resolveCanonicalAccounts(ledgerAccounts);
     const codeCount = new Map<string, number>();
-    for (const account of ledgerAccounts) {
-      codeCount.set(account.code, (codeCount.get(account.code) ?? 0) + 1);
+    for (const account of canonicalAccounts) {
+      codeCount.set(account.code, 1);
     }
 
+    const accountByCode = new Map(canonicalAccounts.map((account) => [account.code, account]));
     const roots = ROOT_ORDER.map((rootCode) =>
-      ledgerAccounts.find((account) => account.code === rootCode) ??
-      this.buildVirtualRoot(controlCenter.id, rootCode),
+      accountByCode.get(rootCode) ?? this.buildVirtualRoot(controlCenter.id, rootCode),
     );
 
     const rootsByKind = new Map<LedgerAccountKind, LedgerAccount>(
       roots.map((rootAccount) => [rootAccount.kind, rootAccount]),
     );
-    const accountsByCode = this.groupAccountsByCode(ledgerAccounts);
+    const accountsByCode = this.groupAccountsByCode(canonicalAccounts);
     const rootIds = new Set(roots.map((root) => root.id));
 
-    const accountById = new Map(ledgerAccounts.map((account) => [account.id, account]));
+    const accountById = new Map(canonicalAccounts.map((account) => [account.id, account]));
     const parentByAccountId = new Map<ID, ID | null>();
     for (const root of roots) {
       parentByAccountId.set(root.id, null);
     }
 
-    const nonRootAccounts = ledgerAccounts.filter((account) => !rootIds.has(account.id));
+    const nonRootAccounts = canonicalAccounts.filter((account) => !rootIds.has(account.id));
     for (const account of nonRootAccounts) {
       parentByAccountId.set(
         account.id,
@@ -121,6 +122,48 @@ export class GetChartOfAccountsSetupUseCase {
       controlCenterId: controlCenter.id,
       roots: rootsNodes,
     };
+  }
+
+  private resolveCanonicalAccounts(accounts: LedgerAccount[]): LedgerAccount[] {
+    const byCode = new Map<string, LedgerAccount[]>();
+    for (const account of accounts) {
+      const current = byCode.get(account.code) ?? [];
+      current.push(account);
+      byCode.set(account.code, current);
+    }
+
+    return Array.from(byCode.values()).map((candidates) =>
+      candidates.slice().sort((left, right) => this.compareCanonicalCandidates(left, right))[0],
+    );
+  }
+
+  private compareCanonicalCandidates(left: LedgerAccount, right: LedgerAccount): number {
+    const leftRank = this.canonicalRank(left);
+    const rightRank = this.canonicalRank(right);
+    if (leftRank !== rightRank) {
+      return leftRank - rightRank;
+    }
+
+    if (left.createdAt !== right.createdAt) {
+      return left.createdAt.localeCompare(right.createdAt);
+    }
+
+    return left.id.localeCompare(right.id);
+  }
+
+  private canonicalRank(account: LedgerAccount): number {
+    const isRoot = ROOT_ORDER.includes(account.code as ChartOfAccountsRootCode);
+    if (isRoot) {
+      if (account.accountRole === 'grouping' && account.parentLedgerAccountId === null) {
+        return 0;
+      }
+      return 2;
+    }
+
+    if (account.parentLedgerAccountId !== null) {
+      return 0;
+    }
+    return 1;
   }
 
   private buildVirtualRoot(controlCenterId: ID, code: ChartOfAccountsRootCode): LedgerAccount {
@@ -259,19 +302,19 @@ export class GetChartOfAccountsSetupUseCase {
       };
     }
 
-    if (input.isSystem) {
+    if (input.nodeType === 'grouping') {
       return {
-        canEdit: false,
-        canCreateChild: false,
+        canEdit: !input.isSystem,
+        canCreateChild: true,
         canArchive: false,
         canDelete: false,
       };
     }
 
-    if (input.nodeType === 'grouping') {
+    if (input.isSystem) {
       return {
-        canEdit: true,
-        canCreateChild: true,
+        canEdit: false,
+        canCreateChild: false,
         canArchive: false,
         canDelete: false,
       };
