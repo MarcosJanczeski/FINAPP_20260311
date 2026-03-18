@@ -40,6 +40,7 @@ export function AccountsPage() {
     useState<AccountAvailabilityStatementDTO | null>(null);
 
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+  const [formAccountId, setFormAccountId] = useState<string | null>(null);
   const [activeForm, setActiveForm] = useState<ActiveForm>('none');
 
   const [isLoading, setIsLoading] = useState(true);
@@ -61,9 +62,13 @@ export function AccountsPage() {
   const [openActionsMenuAccountId, setOpenActionsMenuAccountId] = useState<string | null>(null);
   const statementSectionRef = useRef<HTMLElement | null>(null);
 
-  const selectedAccount = useMemo(
+  const selectedStatementAccount = useMemo(
     () => accounts.find((account) => account.id === selectedAccountId) ?? null,
     [accounts, selectedAccountId],
+  );
+  const selectedFormAccount = useMemo(
+    () => accounts.find((account) => account.id === formAccountId) ?? null,
+    [accounts, formAccountId],
   );
 
   const availableLedgerAccounts = useMemo(
@@ -140,6 +145,14 @@ export function AccountsPage() {
     if (!stillExists) {
       setSelectedAccountId(setup.accounts[0].id);
     }
+
+    if (formAccountId) {
+      const formStillExists = setup.accounts.some((account) => account.id === formAccountId);
+      if (!formStillExists) {
+        setFormAccountId(null);
+        setActiveForm('none');
+      }
+    }
   };
 
   const refreshAvailabilityStatement = async () => {
@@ -210,7 +223,7 @@ export function AccountsPage() {
 
   const focusFormById = (inputId: string, sectionId: string) => {
     const section = document.getElementById(sectionId);
-    section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    section?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     window.setTimeout(() => {
       const input = document.getElementById(inputId) as HTMLInputElement | null;
       if (!input) {
@@ -223,19 +236,19 @@ export function AccountsPage() {
 
   useEffect(() => {
     if (activeForm === 'create') {
-      focusFormById('account-name', 'accounts-form-create');
+      focusFormById('account-name', 'accounts-form-create-panel');
       return;
     }
 
-    if (activeForm === 'edit') {
-      focusFormById('edit-name', 'accounts-form-edit');
+    if (activeForm === 'edit' && formAccountId) {
+      focusFormById('edit-name', `accounts-form-edit-${formAccountId}`);
       return;
     }
 
-    if (activeForm === 'adjust') {
-      focusFormById('adjust-opening-balance', 'accounts-form-adjust');
+    if (activeForm === 'adjust' && formAccountId) {
+      focusFormById('adjust-opening-balance', `accounts-form-adjust-${formAccountId}`);
     }
-  }, [activeForm]);
+  }, [activeForm, formAccountId]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -262,6 +275,7 @@ export function AccountsPage() {
 
   const startCreate = () => {
     clearMessages();
+    setFormAccountId(null);
     setName('');
     setType('cash');
     setNature('asset');
@@ -271,7 +285,7 @@ export function AccountsPage() {
 
   const startEdit = (account: AccountListItemDTO) => {
     clearMessages();
-    setSelectedAccountId(account.id);
+    setFormAccountId(account.id);
     setEditName(account.name);
     setEditType(account.type);
     setActiveForm('edit');
@@ -283,7 +297,7 @@ export function AccountsPage() {
       setError('Conta encerrada nao permite ajuste de saldo inicial.');
       return;
     }
-    setSelectedAccountId(account.id);
+    setFormAccountId(account.id);
     setAdjustOpeningBalanceCents(account.openingBalanceCents);
     setAdjustReason('');
     setActiveForm('adjust');
@@ -291,6 +305,7 @@ export function AccountsPage() {
 
   const closeForm = (scrollOnClose = false) => {
     setActiveForm('none');
+    setFormAccountId(null);
     if (scrollOnClose) {
       scrollToTop();
     }
@@ -330,7 +345,7 @@ export function AccountsPage() {
 
   const handleUpdateProfile = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!controlCenterId || !selectedAccount) {
+    if (!controlCenterId || !selectedFormAccount) {
       setError('Selecione uma conta para editar.');
       return;
     }
@@ -341,7 +356,7 @@ export function AccountsPage() {
     try {
       await container.useCases.updateAccountProfile.execute({
         controlCenterId,
-        accountId: selectedAccount.id,
+        accountId: selectedFormAccount.id,
         name: editName,
         type: editType,
       });
@@ -359,7 +374,7 @@ export function AccountsPage() {
 
   const handleAdjustAccounting = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!controlCenterId || !selectedAccount || !session) {
+    if (!controlCenterId || !selectedFormAccount || !session) {
       setError('Selecione uma conta valida para ajustar.');
       return;
     }
@@ -370,10 +385,10 @@ export function AccountsPage() {
     try {
       await container.useCases.adjustAccountOpening.execute({
         controlCenterId,
-        accountId: selectedAccount.id,
+        accountId: selectedFormAccount.id,
         updatedByUserId: session.userId,
-        nature: selectedAccount.nature,
-        ledgerAccountId: selectedAccount.ledgerAccountId,
+        nature: selectedFormAccount.nature,
+        ledgerAccountId: selectedFormAccount.ledgerAccountId,
         openingBalanceCents: adjustOpeningBalanceCents,
         reason: adjustReason.trim() || 'Ajuste manual de saldo inicial',
       });
@@ -412,8 +427,7 @@ export function AccountsPage() {
       await refreshData();
       await refreshAvailabilityStatement();
 
-      if (selectedAccountId === account.id) {
-        setSelectedAccountId('');
+      if (formAccountId === account.id) {
         closeForm();
       }
 
@@ -453,7 +467,7 @@ export function AccountsPage() {
       await refreshData();
       await refreshAvailabilityStatement();
 
-      if (selectedAccountId === account.id && activeForm === 'adjust') {
+      if (formAccountId === account.id && activeForm === 'adjust') {
         closeForm();
       }
 
@@ -472,9 +486,6 @@ export function AccountsPage() {
   return (
     <RoutePlaceholder title="Contas" description="Lista de contas com acoes e formularios sob demanda.">
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-        <button type="button" onClick={startCreate}>
-          Nova conta
-        </button>
         <Link to={ROUTES.dashboard}>Voltar para dashboard</Link>
         <Link to={ROUTES.ledger}>Ir para lançamentos</Link>
         <Link to={ROUTES.creditCards}>Proximo: cartoes</Link>
@@ -493,8 +504,18 @@ export function AccountsPage() {
               <li
                 key={account.id}
                 style={{
-                  border: account.status === 'active' ? '1px solid #d7d7d7' : '1px solid #e4e4e4',
-                  background: account.status === 'active' ? '#ffffff' : '#f7f7f7',
+                  border:
+                    formAccountId === account.id && (activeForm === 'edit' || activeForm === 'adjust')
+                      ? '1px solid #9cc4d8'
+                      : account.status === 'active'
+                        ? '1px solid #d7d7d7'
+                        : '1px solid #e4e4e4',
+                  background:
+                    formAccountId === account.id && (activeForm === 'edit' || activeForm === 'adjust')
+                      ? '#f5fbfe'
+                      : account.status === 'active'
+                        ? '#ffffff'
+                        : '#f7f7f7',
                   borderRadius: 8,
                   padding: '0.75rem',
                   paddingRight: '2.9rem',
@@ -601,10 +622,183 @@ export function AccountsPage() {
                     Ver extrato
                   </button>
                 </div>
+
+                {activeForm === 'edit' && formAccountId === account.id && selectedFormAccount ? (
+                  <section id={`accounts-form-edit-${account.id}`} style={{ marginTop: '0.35rem' }}>
+                    <h3 style={{ margin: 0, fontSize: '0.95rem' }}>Editar conta</h3>
+                    <p style={{ margin: 0 }}>Conta selecionada: {selectedFormAccount.name}</p>
+                    <form onSubmit={handleUpdateProfile} style={{ display: 'grid', gap: '0.5rem', maxWidth: 380 }}>
+                      <label htmlFor="edit-name">Nome</label>
+                      <input
+                        id="edit-name"
+                        type="text"
+                        value={editName}
+                        onChange={(event) => setEditName(event.target.value)}
+                        required
+                      />
+
+                      <label htmlFor="edit-type">Tipo</label>
+                      <select
+                        id="edit-type"
+                        value={editType}
+                        onChange={(event) => setEditType(event.target.value as AccountType)}
+                      >
+                        {ACCOUNT_TYPE_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button type="submit" disabled={isSaving}>
+                          Salvar alteracoes
+                        </button>
+                        <button type="button" onClick={() => closeForm()} disabled={isSaving}>
+                          Cancelar
+                        </button>
+                      </div>
+                    </form>
+                  </section>
+                ) : null}
+
+                {activeForm === 'adjust' && formAccountId === account.id && selectedFormAccount ? (
+                  <section id={`accounts-form-adjust-${account.id}`} style={{ marginTop: '0.35rem' }}>
+                    <h3 style={{ margin: 0, fontSize: '0.95rem' }}>Ajustar saldo inicial</h3>
+                    <p style={{ margin: 0 }}>
+                      Conta selecionada: {selectedFormAccount.name}. O app registra o ajuste contabil
+                      automaticamente e preserva historico tecnico.
+                    </p>
+                    <form
+                      onSubmit={handleAdjustAccounting}
+                      style={{ display: 'grid', gap: '0.5rem', maxWidth: 380 }}
+                    >
+                      <label htmlFor="adjust-opening-balance">Novo saldo inicial</label>
+                      <CurrencyInput
+                        id="adjust-opening-balance"
+                        valueCents={adjustOpeningBalanceCents}
+                        onChangeCents={setAdjustOpeningBalanceCents}
+                      />
+
+                      <label htmlFor="adjust-reason">Motivo (opcional)</label>
+                      <input
+                        id="adjust-reason"
+                        type="text"
+                        value={adjustReason}
+                        onChange={(event) => setAdjustReason(event.target.value)}
+                        placeholder="Opcional"
+                      />
+
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button type="submit" disabled={isSaving}>
+                          Salvar ajuste
+                        </button>
+                        <button type="button" onClick={() => closeForm()} disabled={isSaving}>
+                          Cancelar
+                        </button>
+                      </div>
+                    </form>
+                  </section>
+                ) : null}
               </li>
             ))}
           </ul>
         )}
+      </section>
+
+      <section style={{ marginTop: '1rem' }}>
+        <button type="button" onClick={startCreate}>
+          Nova conta
+        </button>
+        {activeForm === 'create' ? (
+          <section id="accounts-form-create-panel" style={{ marginTop: '0.75rem' }}>
+            <h2>Nova conta</h2>
+            <form onSubmit={handleCreateAccount} style={{ display: 'grid', gap: '0.5rem', maxWidth: 380 }}>
+              <label htmlFor="account-name">Nome da conta</label>
+              <input
+                id="account-name"
+                type="text"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                required
+              />
+
+              <label htmlFor="account-type">Tipo</label>
+              <select
+                id="account-type"
+                value={type}
+                onChange={(event) => setType(event.target.value as AccountType)}
+              >
+                {ACCOUNT_TYPE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+
+              <label htmlFor="account-nature">Natureza</label>
+              <select
+                id="account-nature"
+                value={nature}
+                onChange={(event) => setNature(event.target.value as AccountNature)}
+              >
+                <option value="asset">Ativo</option>
+                <option value="liability">Passivo</option>
+              </select>
+
+              {isAvailabilityCreateFlow ? (
+                <div
+                  style={{
+                    border: '1px solid #d7d7d7',
+                    borderRadius: 8,
+                    padding: '0.6rem',
+                    background: '#fafcff',
+                    display: 'grid',
+                    gap: '0.2rem',
+                  }}
+                >
+                  <strong style={{ fontSize: '0.9rem' }}>Conta contábil vinculada</strong>
+                  <span>Criada automaticamente pelo sistema</span>
+                  <span style={{ color: '#5f5f5f', fontSize: '0.88rem' }}>
+                    Ao salvar, uma conta contábil será criada e vinculada a esta conta.
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <label htmlFor="ledger-account">Conta contabil</label>
+                  <select
+                    id="ledger-account"
+                    value={ledgerAccountId}
+                    onChange={(event) => setLedgerAccountId(event.target.value)}
+                    required
+                  >
+                    {availableLedgerAccounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.code} - {account.name}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              )}
+
+              <label htmlFor="opening-balance">Saldo inicial</label>
+              <CurrencyInput
+                id="opening-balance"
+                valueCents={openingBalanceCents}
+                onChangeCents={setOpeningBalanceCents}
+              />
+
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button type="submit" disabled={isSaving || (!ledgerAccountId && !isAvailabilityCreateFlow)}>
+                  {isSaving ? 'Salvando...' : 'Salvar conta'}
+                </button>
+                <button type="button" onClick={() => closeForm()} disabled={isSaving}>
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </section>
+        ) : null}
       </section>
 
       <section ref={statementSectionRef} style={{ marginTop: '1rem' }}>
@@ -625,8 +819,8 @@ export function AccountsPage() {
             </select>
           </div>
         ) : null}
-        {!selectedAccount ? <p>Selecione uma conta para consultar o extrato.</p> : null}
-        {selectedAccount && !availabilityStatement ? <p>Carregando extrato...</p> : null}
+        {!selectedStatementAccount ? <p>Selecione uma conta para consultar o extrato.</p> : null}
+        {selectedStatementAccount && !availabilityStatement ? <p>Carregando extrato...</p> : null}
         {availabilityStatement ? (
           <div style={{ display: 'grid', gap: '0.5rem' }}>
             <p>
@@ -665,175 +859,6 @@ export function AccountsPage() {
           </div>
         ) : null}
       </section>
-
-      {activeForm === 'create' ? (
-        <section id="accounts-form-create" style={{ marginTop: '1rem' }}>
-          <h2>Nova conta</h2>
-          <form onSubmit={handleCreateAccount} style={{ display: 'grid', gap: '0.5rem', maxWidth: 380 }}>
-            <label htmlFor="account-name">Nome da conta</label>
-            <input
-              id="account-name"
-              type="text"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              required
-            />
-
-            <label htmlFor="account-type">Tipo</label>
-            <select
-              id="account-type"
-              value={type}
-              onChange={(event) => setType(event.target.value as AccountType)}
-            >
-              {ACCOUNT_TYPE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-
-            <label htmlFor="account-nature">Natureza</label>
-            <select
-              id="account-nature"
-              value={nature}
-              onChange={(event) => setNature(event.target.value as AccountNature)}
-            >
-              <option value="asset">Ativo</option>
-              <option value="liability">Passivo</option>
-            </select>
-
-            {isAvailabilityCreateFlow ? (
-              <div
-                style={{
-                  border: '1px solid #d7d7d7',
-                  borderRadius: 8,
-                  padding: '0.6rem',
-                  background: '#fafcff',
-                  display: 'grid',
-                  gap: '0.2rem',
-                }}
-              >
-                <strong style={{ fontSize: '0.9rem' }}>Conta contábil vinculada</strong>
-                <span>Criada automaticamente pelo sistema</span>
-                <span style={{ color: '#5f5f5f', fontSize: '0.88rem' }}>
-                  Ao salvar, uma conta contábil será criada e vinculada a esta conta.
-                </span>
-              </div>
-            ) : (
-              <>
-                <label htmlFor="ledger-account">Conta contabil</label>
-                <select
-                  id="ledger-account"
-                  value={ledgerAccountId}
-                  onChange={(event) => setLedgerAccountId(event.target.value)}
-                  required
-                >
-                  {availableLedgerAccounts.map((account) => (
-                    <option key={account.id} value={account.id}>
-                      {account.code} - {account.name}
-                    </option>
-                  ))}
-                </select>
-              </>
-            )}
-
-            <label htmlFor="opening-balance">Saldo inicial</label>
-            <CurrencyInput
-              id="opening-balance"
-              valueCents={openingBalanceCents}
-              onChangeCents={setOpeningBalanceCents}
-            />
-
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button type="submit" disabled={isSaving || (!ledgerAccountId && !isAvailabilityCreateFlow)}>
-                {isSaving ? 'Salvando...' : 'Salvar conta'}
-              </button>
-              <button type="button" onClick={() => closeForm(true)} disabled={isSaving}>
-                Cancelar
-              </button>
-            </div>
-          </form>
-        </section>
-      ) : null}
-
-      {activeForm === 'edit' && selectedAccount ? (
-        <section id="accounts-form-edit" style={{ marginTop: '1rem' }}>
-          <h2>Editar conta</h2>
-          <p>Conta selecionada: {selectedAccount.name}</p>
-          <form onSubmit={handleUpdateProfile} style={{ display: 'grid', gap: '0.5rem', maxWidth: 380 }}>
-            <label htmlFor="edit-name">Nome</label>
-            <input
-              id="edit-name"
-              type="text"
-              value={editName}
-              onChange={(event) => setEditName(event.target.value)}
-              required
-            />
-
-            <label htmlFor="edit-type">Tipo</label>
-            <select
-              id="edit-type"
-              value={editType}
-              onChange={(event) => setEditType(event.target.value as AccountType)}
-            >
-              {ACCOUNT_TYPE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button type="submit" disabled={isSaving}>
-                Salvar alteracoes
-              </button>
-              <button type="button" onClick={() => closeForm(true)} disabled={isSaving}>
-                Cancelar
-              </button>
-            </div>
-          </form>
-        </section>
-      ) : null}
-
-      {activeForm === 'adjust' && selectedAccount ? (
-        <section id="accounts-form-adjust" style={{ marginTop: '1rem' }}>
-          <h2>Ajustar saldo inicial</h2>
-          <p>
-            Conta selecionada: {selectedAccount.name}. O app registra o ajuste contabil automaticamente
-            e preserva historico tecnico.
-          </p>
-          <form
-            onSubmit={handleAdjustAccounting}
-            style={{ display: 'grid', gap: '0.5rem', maxWidth: 380 }}
-          >
-            <label htmlFor="adjust-opening-balance">Novo saldo inicial</label>
-            <CurrencyInput
-              id="adjust-opening-balance"
-              valueCents={adjustOpeningBalanceCents}
-              onChangeCents={setAdjustOpeningBalanceCents}
-            />
-
-            <label htmlFor="adjust-reason">Motivo (opcional)</label>
-            <input
-              id="adjust-reason"
-              type="text"
-              value={adjustReason}
-              onChange={(event) => setAdjustReason(event.target.value)}
-              placeholder="Opcional"
-            />
-
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button type="submit" disabled={isSaving}>
-                Salvar ajuste
-              </button>
-              <button type="button" onClick={() => closeForm(true)} disabled={isSaving}>
-                Cancelar
-              </button>
-            </div>
-          </form>
-        </section>
-      ) : null}
-
     </RoutePlaceholder>
   );
 }
