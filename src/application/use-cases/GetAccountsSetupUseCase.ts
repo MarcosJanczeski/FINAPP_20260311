@@ -22,6 +22,7 @@ const DEFAULT_LEDGER_ACCOUNTS: ReadonlyArray<
       accountRole: 'grouping',
       parentCode: null,
       isSystem: true,
+      status: 'active',
     },
     {
       code: 'PASSIVO',
@@ -30,6 +31,7 @@ const DEFAULT_LEDGER_ACCOUNTS: ReadonlyArray<
       accountRole: 'grouping',
       parentCode: null,
       isSystem: true,
+      status: 'active',
     },
     {
       code: 'PATRIMONIO_LIQUIDO',
@@ -38,6 +40,7 @@ const DEFAULT_LEDGER_ACCOUNTS: ReadonlyArray<
       accountRole: 'grouping',
       parentCode: null,
       isSystem: true,
+      status: 'active',
     },
     {
       code: 'RECEITAS',
@@ -46,6 +49,7 @@ const DEFAULT_LEDGER_ACCOUNTS: ReadonlyArray<
       accountRole: 'grouping',
       parentCode: null,
       isSystem: true,
+      status: 'active',
     },
     {
       code: 'DESPESAS',
@@ -54,6 +58,7 @@ const DEFAULT_LEDGER_ACCOUNTS: ReadonlyArray<
       accountRole: 'grouping',
       parentCode: null,
       isSystem: true,
+      status: 'active',
     },
     {
       code: 'ATIVO:DISPONIBILIDADES',
@@ -62,6 +67,7 @@ const DEFAULT_LEDGER_ACCOUNTS: ReadonlyArray<
       accountRole: 'grouping',
       parentCode: 'ATIVO',
       isSystem: true,
+      status: 'active',
     },
     {
       code: 'ATIVO:RECEBIVEIS',
@@ -70,6 +76,7 @@ const DEFAULT_LEDGER_ACCOUNTS: ReadonlyArray<
       accountRole: 'posting',
       parentCode: 'ATIVO',
       isSystem: true,
+      status: 'active',
     },
     {
       code: 'PASSIVO:OBRIGACOES',
@@ -78,6 +85,7 @@ const DEFAULT_LEDGER_ACCOUNTS: ReadonlyArray<
       accountRole: 'posting',
       parentCode: 'PASSIVO',
       isSystem: true,
+      status: 'active',
     },
     {
       code: 'PL:SALDOS_INICIAIS',
@@ -86,6 +94,7 @@ const DEFAULT_LEDGER_ACCOUNTS: ReadonlyArray<
       accountRole: 'posting',
       parentCode: 'PATRIMONIO_LIQUIDO',
       isSystem: true,
+      status: 'active',
     },
     {
       code: 'RECEITA:OPERACIONAL',
@@ -94,6 +103,7 @@ const DEFAULT_LEDGER_ACCOUNTS: ReadonlyArray<
       accountRole: 'posting',
       parentCode: 'RECEITAS',
       isSystem: true,
+      status: 'active',
     },
     {
       code: 'DESPESA:OPERACIONAL',
@@ -102,6 +112,7 @@ const DEFAULT_LEDGER_ACCOUNTS: ReadonlyArray<
       accountRole: 'posting',
       parentCode: 'DESPESAS',
       isSystem: true,
+      status: 'active',
     },
   ];
 
@@ -167,6 +178,7 @@ export class GetAccountsSetupUseCase {
         accountRole: template.accountRole,
         parentLedgerAccountId,
         isSystem: template.isSystem,
+        status: template.status,
         createdAt: new Date().toISOString(),
       };
       await this.ledgerAccountRepository.save(created);
@@ -220,6 +232,7 @@ export class GetAccountsSetupUseCase {
           accountRole: 'posting',
           parentLedgerAccountId: genericAvailability.id,
           isSystem: false,
+          status: 'active',
           createdAt: new Date().toISOString(),
         };
         await this.ledgerAccountRepository.save(specificLedgerAccount);

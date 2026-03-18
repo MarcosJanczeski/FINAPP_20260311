@@ -118,6 +118,7 @@ export class AdjustAccountOpeningUseCase {
       parentLedgerAccountId:
         (await this.ledgerAccountRepository.getByCode(controlCenterId, EQUITY_ROOT_CODE))?.id ?? null,
       isSystem: true,
+      status: 'active' as const,
       createdAt: new Date().toISOString(),
     };
 

@@ -1,4 +1,4 @@
-import type { LedgerAccountKind } from '../../domain/entities/LedgerAccount';
+import type { LedgerAccountKind, LedgerAccountStatus } from '../../domain/entities/LedgerAccount';
 import type { ID } from '../../domain/types/common';
 
 export type ChartOfAccountsRootCode =
@@ -24,6 +24,7 @@ export interface ChartOfAccountsNodeDTO {
   name: string;
   kind: LedgerAccountKind;
   nodeType: ChartOfAccountsNodeType;
+  status: LedgerAccountStatus;
   isSystem: boolean;
   isTechnical: boolean;
   hasLedgerEntries: boolean;

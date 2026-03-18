@@ -176,6 +176,7 @@ export class GetChartOfAccountsSetupUseCase {
       accountRole: 'grouping',
       parentLedgerAccountId: null,
       isSystem: true,
+      status: 'active',
       createdAt: new Date(0).toISOString(),
     };
   }
@@ -266,6 +267,7 @@ export class GetChartOfAccountsSetupUseCase {
       nodeType,
       isSystem: input.account.isSystem,
       isTechnical: input.account.isSystem && nodeType !== 'root',
+      status: input.account.status,
       usageCount,
       hasLedgerEntries: usageCount > 0,
       hasCodeConflict: codeConflictCount > 1,

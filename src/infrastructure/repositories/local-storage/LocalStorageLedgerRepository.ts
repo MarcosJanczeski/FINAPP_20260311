@@ -100,6 +100,7 @@ export class LocalStorageLedgerAccountRepository implements LedgerAccountReposit
             : isRoot
               ? null
               : resolveFallbackParent(account),
+        status: account.status ?? 'active',
         isSystem: Boolean(account.isSystem),
         createdAt: account.createdAt ?? new Date(0).toISOString(),
       };

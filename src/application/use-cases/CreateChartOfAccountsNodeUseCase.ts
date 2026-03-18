@@ -39,6 +39,7 @@ export class CreateChartOfAccountsNodeUseCase {
       accountRole: input.accountRole,
       parentLedgerAccountId: parent.id,
       isSystem: false,
+      status: 'active',
       createdAt: now,
     };
 

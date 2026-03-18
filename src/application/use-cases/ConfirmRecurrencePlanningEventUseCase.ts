@@ -188,6 +188,7 @@ export class ConfirmRecurrencePlanningEventUseCase {
       accountRole: 'posting',
       parentLedgerAccountId,
       isSystem: true,
+      status: 'active',
       createdAt: new Date().toISOString(),
     };
 

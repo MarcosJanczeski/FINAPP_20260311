@@ -29,6 +29,11 @@ export function ChartOfAccountsPage() {
   const [createName, setCreateName] = useState('');
   const [createRole, setCreateRole] = useState<'grouping' | 'posting'>('posting');
   const [isSavingCreate, setIsSavingCreate] = useState(false);
+  const [editNodeId, setEditNodeId] = useState<string | null>(null);
+  const [editNodeLabel, setEditNodeLabel] = useState<string>('');
+  const [editName, setEditName] = useState('');
+  const [editStatus, setEditStatus] = useState<'active' | 'inactive'>('active');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   useEffect(() => {
     if (!session) {
@@ -87,6 +92,7 @@ export function ChartOfAccountsPage() {
     if (!node.capabilities.canCreateChild) {
       return;
     }
+    cancelEdit();
     setCreateParentId(node.id);
     setCreateParentLabel(`${node.code} - ${node.name}`);
     setCreateName('');
@@ -102,6 +108,28 @@ export function ChartOfAccountsPage() {
     setCreateParentLabel('');
     setCreateName('');
     setCreateRole('posting');
+  };
+
+  const startEditForNode = (node: ChartOfAccountsNodeDTO) => {
+    if (!node.capabilities.canEdit) {
+      return;
+    }
+    cancelCreate();
+    setEditNodeId(node.id);
+    setEditNodeLabel(`${node.code} - ${node.name}`);
+    setEditName(node.name);
+    setEditStatus(node.status);
+    setExpandedNodeIds((current) => ({
+      ...current,
+      [node.id]: true,
+    }));
+  };
+
+  const cancelEdit = () => {
+    setEditNodeId(null);
+    setEditNodeLabel('');
+    setEditName('');
+    setEditStatus('active');
   };
 
   const refreshTree = async () => {
@@ -141,6 +169,31 @@ export function ChartOfAccountsPage() {
       setError(currentError instanceof Error ? currentError.message : 'Falha ao criar conta contábil.');
     } finally {
       setIsSavingCreate(false);
+    }
+  };
+
+  const handleEdit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editNodeId || !createControlCenterId) {
+      setError('Contexto de edição inválido.');
+      return;
+    }
+
+    setError(null);
+    setIsSavingEdit(true);
+    try {
+      await container.useCases.updateChartOfAccountsNode.execute({
+        controlCenterId: createControlCenterId,
+        ledgerAccountId: editNodeId,
+        name: editName,
+        status: editStatus,
+      });
+      await refreshTree();
+      cancelEdit();
+    } catch (currentError) {
+      setError(currentError instanceof Error ? currentError.message : 'Falha ao atualizar conta contábil.');
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -253,6 +306,7 @@ export function ChartOfAccountsPage() {
                           expandedNodeIds={expandedNodeIds}
                           onToggle={toggleNode}
                           onCreateClick={startCreateForNode}
+                          onEditClick={startEditForNode}
                           createParentId={createParentId}
                           createParentLabel={createParentLabel}
                           createName={createName}
@@ -262,6 +316,15 @@ export function ChartOfAccountsPage() {
                           onCancelCreate={cancelCreate}
                           onSubmitCreate={handleCreate}
                           isSavingCreate={isSavingCreate}
+                          editNodeId={editNodeId}
+                          editNodeLabel={editNodeLabel}
+                          editName={editName}
+                          setEditName={setEditName}
+                          editStatus={editStatus}
+                          setEditStatus={setEditStatus}
+                          onCancelEdit={cancelEdit}
+                          onSubmitEdit={handleEdit}
+                          isSavingEdit={isSavingEdit}
                         />
                       ))}
                     </ul>
@@ -360,12 +423,74 @@ function InlineCreateForm(input: {
   );
 }
 
+function InlineEditForm(input: {
+  nodeLabel: string;
+  name: string;
+  setName: (value: string) => void;
+  status: 'active' | 'inactive';
+  setStatus: (value: 'active' | 'inactive') => void;
+  onCancel: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  isSaving: boolean;
+}) {
+  return (
+    <form
+      onSubmit={input.onSubmit}
+      style={{
+        padding: '0.6rem 0.85rem',
+        borderTop: '1px dashed #d6dbe3',
+        display: 'grid',
+        gap: '0.45rem',
+        background: '#fafcff',
+      }}
+    >
+      <strong style={{ fontSize: '0.9rem' }}>Editar conta</strong>
+      <span style={{ fontSize: '0.84rem', color: '#4b5563' }}>{input.nodeLabel}</span>
+      <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+        Código e estrutura permanecem inalterados neste fluxo.
+      </span>
+
+      <label style={{ display: 'grid', gap: '0.2rem' }}>
+        <span style={{ fontSize: '0.84rem' }}>Nome</span>
+        <input
+          type="text"
+          value={input.name}
+          onChange={(event) => input.setName(event.target.value)}
+          placeholder="Ex.: Fornecedores Nacionais"
+          required
+        />
+      </label>
+
+      <label style={{ display: 'grid', gap: '0.2rem' }}>
+        <span style={{ fontSize: '0.84rem' }}>Status</span>
+        <select
+          value={input.status}
+          onChange={(event) => input.setStatus(event.target.value as 'active' | 'inactive')}
+        >
+          <option value="active">Ativa</option>
+          <option value="inactive">Inativa</option>
+        </select>
+      </label>
+
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <button type="submit" disabled={input.isSaving}>
+          {input.isSaving ? 'Salvando...' : 'Salvar alterações'}
+        </button>
+        <button type="button" onClick={input.onCancel} disabled={input.isSaving}>
+          Cancelar
+        </button>
+      </div>
+    </form>
+  );
+}
+
 function ChartNodeRow({
   node,
   depth,
   expandedNodeIds,
   onToggle,
   onCreateClick,
+  onEditClick,
   createParentId,
   createParentLabel,
   createName,
@@ -375,12 +500,22 @@ function ChartNodeRow({
   onCancelCreate,
   onSubmitCreate,
   isSavingCreate,
+  editNodeId,
+  editNodeLabel,
+  editName,
+  setEditName,
+  editStatus,
+  setEditStatus,
+  onCancelEdit,
+  onSubmitEdit,
+  isSavingEdit,
 }: {
   node: ChartOfAccountsNodeDTO;
   depth: number;
   expandedNodeIds: Record<string, boolean>;
   onToggle: (nodeId: string) => void;
   onCreateClick: (node: ChartOfAccountsNodeDTO) => void;
+  onEditClick: (node: ChartOfAccountsNodeDTO) => void;
   createParentId: string | null;
   createParentLabel: string;
   createName: string;
@@ -390,6 +525,15 @@ function ChartNodeRow({
   onCancelCreate: () => void;
   onSubmitCreate: (event: FormEvent<HTMLFormElement>) => void;
   isSavingCreate: boolean;
+  editNodeId: string | null;
+  editNodeLabel: string;
+  editName: string;
+  setEditName: (value: string) => void;
+  editStatus: 'active' | 'inactive';
+  setEditStatus: (value: 'active' | 'inactive') => void;
+  onCancelEdit: () => void;
+  onSubmitEdit: (event: FormEvent<HTMLFormElement>) => void;
+  isSavingEdit: boolean;
 }) {
   const hasChildren = node.children.length > 0;
   const isExpanded = expandedNodeIds[node.id] ?? false;
@@ -429,23 +573,35 @@ function ChartNodeRow({
           <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
             {node.nodeType === 'grouping' ? <Badge label="Agrupadora" /> : null}
             {node.isTechnical ? <Badge label="Sistema" /> : null}
+            {node.status === 'inactive' ? <Badge label="Inativa" /> : null}
             {node.hasLedgerEntries ? <Badge label="Em uso" /> : null}
             {node.hasCodeConflict ? <Badge label="Duplicado" /> : null}
           </div>
         </div>
 
-        {node.capabilities.canCreateChild ? (
-          <button
-            type="button"
-            onClick={() => onCreateClick(node)}
-            style={{ minWidth: 26, height: 26 }}
-            aria-label={`Adicionar subconta em ${node.code}`}
-          >
-            +
-          </button>
-        ) : (
-          <div style={{ width: 26, height: 26 }} aria-hidden="true" />
-        )}
+        <div style={{ display: 'flex', gap: '0.3rem' }}>
+          {node.capabilities.canEdit ? (
+            <button
+              type="button"
+              onClick={() => onEditClick(node)}
+              style={{ height: 26 }}
+              aria-label={`Editar ${node.code}`}
+            >
+              Editar
+            </button>
+          ) : null}
+
+          {node.capabilities.canCreateChild ? (
+            <button
+              type="button"
+              onClick={() => onCreateClick(node)}
+              style={{ minWidth: 26, height: 26 }}
+              aria-label={`Adicionar subconta em ${node.code}`}
+            >
+              +
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {createParentId === node.id ? (
@@ -461,6 +617,19 @@ function ChartNodeRow({
         />
       ) : null}
 
+      {editNodeId === node.id ? (
+        <InlineEditForm
+          nodeLabel={editNodeLabel}
+          name={editName}
+          setName={setEditName}
+          status={editStatus}
+          setStatus={setEditStatus}
+          onCancel={onCancelEdit}
+          onSubmit={onSubmitEdit}
+          isSaving={isSavingEdit}
+        />
+      ) : null}
+
       {hasChildren && isExpanded ? (
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
           {node.children.map((child) => (
@@ -471,6 +640,7 @@ function ChartNodeRow({
               expandedNodeIds={expandedNodeIds}
               onToggle={onToggle}
               onCreateClick={onCreateClick}
+              onEditClick={onEditClick}
               createParentId={createParentId}
               createParentLabel={createParentLabel}
               createName={createName}
@@ -480,6 +650,15 @@ function ChartNodeRow({
               onCancelCreate={onCancelCreate}
               onSubmitCreate={onSubmitCreate}
               isSavingCreate={isSavingCreate}
+              editNodeId={editNodeId}
+              editNodeLabel={editNodeLabel}
+              editName={editName}
+              setEditName={setEditName}
+              editStatus={editStatus}
+              setEditStatus={setEditStatus}
+              onCancelEdit={onCancelEdit}
+              onSubmitEdit={onSubmitEdit}
+              isSavingEdit={isSavingEdit}
             />
           ))}
         </ul>

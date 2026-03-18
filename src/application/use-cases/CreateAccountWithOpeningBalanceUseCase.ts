@@ -99,6 +99,7 @@ export class CreateAccountWithOpeningBalanceUseCase {
       parentLedgerAccountId:
         (await this.ledgerAccountRepository.getByCode(controlCenterId, EQUITY_ROOT_CODE))?.id ?? null,
       isSystem: true,
+      status: 'active' as const,
       createdAt: new Date().toISOString(),
     };
 
@@ -144,6 +145,7 @@ export class CreateAccountWithOpeningBalanceUseCase {
         (await this.ledgerAccountRepository.getByCode(controlCenterId, AVAILABILITY_BUCKET_CODE))?.id ??
         null,
       isSystem: false,
+      status: 'active' as const,
       createdAt: new Date().toISOString(),
     };
 

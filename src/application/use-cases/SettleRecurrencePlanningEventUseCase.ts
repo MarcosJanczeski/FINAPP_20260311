@@ -370,6 +370,7 @@ export class SettleRecurrencePlanningEventUseCase {
       accountRole: 'posting',
       parentLedgerAccountId,
       isSystem: true,
+      status: 'active',
       createdAt: new Date().toISOString(),
     };
 
