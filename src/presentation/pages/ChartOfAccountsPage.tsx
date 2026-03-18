@@ -14,10 +14,6 @@ const ROOT_LABELS: Record<ChartOfAccountsRootCode, string> = {
   DESPESAS: 'Despesas',
 };
 
-function usageLabel(usageCount: number): string {
-  return usageCount === 1 ? '1 lançamento' : `${usageCount} lançamentos`;
-}
-
 export function ChartOfAccountsPage() {
   const { session } = useAuth();
   const container = useAppContainer();
@@ -107,45 +103,59 @@ export function ChartOfAccountsPage() {
           Total de contas carregadas: <strong>{totalAccounts}</strong>
         </p>
 
-        <ul style={{ display: 'grid', gap: '0.75rem', listStyle: 'none', padding: 0, marginTop: '0.75rem' }}>
+        <ul
+          style={{
+            listStyle: 'none',
+            padding: 0,
+            marginTop: '0.75rem',
+            border: '1px solid #e5e7eb',
+            borderRadius: 10,
+            overflow: 'hidden',
+            background: '#fff',
+          }}
+        >
           {roots.map((rootNode) => {
             const rootCode = rootNode.code as ChartOfAccountsRootCode;
             const isExpanded = expandedNodeIds[rootNode.id] ?? true;
             return (
-              <li
-                key={rootNode.id}
-                style={{
-                  border: '1px solid #d7d7d7',
-                  borderRadius: 10,
-                  padding: '0.75rem',
-                  display: 'grid',
-                  gap: '0.6rem',
-                  background: '#fff',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
-                  <div style={{ display: 'grid', gap: '0.35rem' }}>
-                    <strong>{ROOT_LABELS[rootCode] ?? rootNode.name}</strong>
-                    <span style={{ color: '#4f4f4f' }}>{rootNode.code}</span>
-                    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                      <span style={{ border: '1px solid #d7d7d7', borderRadius: 999, padding: '0.1rem 0.45rem', fontSize: '0.78rem' }}>
-                        Raiz obrigatória
-                      </span>
-                      <span style={{ border: '1px solid #d7d7d7', borderRadius: 999, padding: '0.1rem 0.45rem', fontSize: '0.78rem' }}>
-                        Sistema
-                      </span>
+              <li key={rootNode.id} style={{ borderBottom: '1px solid #eceff2' }}>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'auto 1fr auto',
+                    alignItems: 'start',
+                    gap: '0.5rem',
+                    padding: '0.65rem 0.7rem',
+                    background: '#f8fafc',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggleNode(rootNode.id)}
+                    style={{ minWidth: 28, height: 28 }}
+                    aria-label={isExpanded ? 'Recolher raiz' : 'Expandir raiz'}
+                  >
+                    {isExpanded ? '▾' : '▸'}
+                  </button>
+
+                  <div style={{ display: 'grid', gap: '0.2rem' }}>
+                    <strong style={{ lineHeight: 1.2 }}>{ROOT_LABELS[rootCode] ?? rootNode.name}</strong>
+                    <span style={{ color: '#4f4f4f', fontSize: '0.88rem' }}>{rootNode.code}</span>
+                    <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                      <Badge label="Agrupadora" />
+                      <Badge label="Sistema" />
                     </div>
                   </div>
-                  <button type="button" onClick={() => toggleNode(rootNode.id)}>
-                    {isExpanded ? 'Recolher' : 'Expandir'}
-                  </button>
+                  <div style={{ width: 28, height: 28 }} aria-hidden="true" />
                 </div>
 
                 {isExpanded ? (
                   rootNode.children.length === 0 ? (
-                    <p style={{ color: '#666' }}>Nenhuma subconta cadastrada nesta raiz.</p>
+                    <p style={{ color: '#666', margin: 0, padding: '0.5rem 0.85rem 0.8rem' }}>
+                      Nenhuma subconta cadastrada nesta raiz.
+                    </p>
                   ) : (
-                    <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '0.5rem' }}>
+                    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                       {rootNode.children.map((node) => (
                         <ChartNodeRow
                           key={node.id}
@@ -164,6 +174,23 @@ export function ChartOfAccountsPage() {
         </ul>
       </section>
     </RoutePlaceholder>
+  );
+}
+
+function Badge({ label }: { label: string }) {
+  return (
+    <span
+      style={{
+        border: '1px solid #d7dce3',
+        borderRadius: 999,
+        padding: '0.08rem 0.42rem',
+        fontSize: '0.75rem',
+        color: '#4b5563',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {label}
+    </span>
   );
 }
 
@@ -188,58 +215,48 @@ function ChartNodeRow({
   return (
     <li
       style={{
-        border: '1px solid #ececec',
-        borderRadius: 8,
-        padding: '0.65rem',
-        display: 'grid',
-        gap: '0.3rem',
-        background: '#fcfcfc',
-        marginLeft: `${Math.min(depth, 4) * 0.55}rem`,
+        borderTop: '1px solid #eff2f5',
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
-        <strong style={{ fontSize: '0.95rem' }}>{node.name}</strong>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'auto 1fr auto',
+          gap: '0.5rem',
+          alignItems: 'start',
+          padding: '0.52rem 0.7rem',
+          paddingLeft: `${0.7 + Math.min(depth, 6) * 0.72}rem`,
+        }}
+      >
         {hasChildren ? (
-          <button type="button" onClick={() => onToggle(node.id)}>
-            {isExpanded ? 'Recolher' : 'Expandir'}
+          <button
+            type="button"
+            onClick={() => onToggle(node.id)}
+            style={{ minWidth: 26, height: 26 }}
+            aria-label={isExpanded ? `Recolher ${node.code}` : `Expandir ${node.code}`}
+          >
+            {isExpanded ? '▾' : '▸'}
           </button>
-        ) : null}
-      </div>
-
-      <span style={{ color: '#4f4f4f' }}>{node.code}</span>
-      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-        <span style={{ border: '1px solid #d7d7d7', borderRadius: 999, padding: '0.1rem 0.45rem', fontSize: '0.78rem' }}>
-          {node.nodeType === 'grouping' ? 'Agrupadora' : 'Final lançável'}
-        </span>
-        {node.isTechnical ? (
-          <span style={{ border: '1px solid #d7d7d7', borderRadius: 999, padding: '0.1rem 0.45rem', fontSize: '0.78rem' }}>
-            Sistema
-          </span>
-        ) : null}
-        {node.hasLedgerEntries ? (
-          <span style={{ border: '1px solid #d7d7d7', borderRadius: 999, padding: '0.1rem 0.45rem', fontSize: '0.78rem' }}>
-            Em uso ({usageLabel(node.usageCount)})
-          </span>
         ) : (
-          <span style={{ border: '1px solid #d7d7d7', borderRadius: 999, padding: '0.1rem 0.45rem', fontSize: '0.78rem' }}>
-            Sem uso
-          </span>
+          <span style={{ width: 26, height: 26, display: 'inline-block' }} aria-hidden="true" />
         )}
-        {node.hasCodeConflict ? (
-          <span style={{ border: '1px solid #f2b8b8', borderRadius: 999, padding: '0.1rem 0.45rem', fontSize: '0.78rem', color: '#8a2a2a' }}>
-            Código duplicado ({node.codeConflictCount})
-          </span>
-        ) : null}
-      </div>
 
-      <span style={{ color: '#666', fontSize: '0.85rem' }}>
-        Capacidades: editar {node.capabilities.canEdit ? 'sim' : 'não'} • criar subconta{' '}
-        {node.capabilities.canCreateChild ? 'sim' : 'não'} • excluir{' '}
-        {node.capabilities.canDelete ? 'sim' : 'não'}
-      </span>
+        <div style={{ display: 'grid', gap: '0.18rem' }}>
+          <span style={{ color: '#374151', fontSize: '0.86rem' }}>{node.code}</span>
+          <strong style={{ fontSize: '0.93rem', lineHeight: 1.2 }}>{node.name}</strong>
+          <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+            {node.nodeType === 'grouping' ? <Badge label="Agrupadora" /> : null}
+            {node.isTechnical ? <Badge label="Sistema" /> : null}
+            {node.hasLedgerEntries ? <Badge label="Em uso" /> : null}
+            {node.hasCodeConflict ? <Badge label="Duplicado" /> : null}
+          </div>
+        </div>
+
+        <div style={{ width: 26, height: 26 }} aria-hidden="true" />
+      </div>
 
       {hasChildren && isExpanded ? (
-        <ul style={{ listStyle: 'none', padding: 0, margin: '0.2rem 0 0', display: 'grid', gap: '0.5rem' }}>
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
           {node.children.map((child) => (
             <ChartNodeRow
               key={child.id}
