@@ -15,6 +15,7 @@ const ACCOUNT_TYPE_OPTIONS: { value: AccountType; label: string }[] = [
   { value: 'cash', label: 'Caixa' },
   { value: 'checking', label: 'Conta corrente' },
   { value: 'digital', label: 'Conta digital' },
+  { value: 'savings', label: 'Poupança' },
   { value: 'investment', label: 'Investimento' },
   { value: 'other', label: 'Outra' },
 ];
@@ -22,7 +23,10 @@ const ACCOUNT_TYPE_OPTIONS: { value: AccountType; label: string }[] = [
 type ActiveForm = 'none' | 'create' | 'edit' | 'adjust';
 
 function isAvailabilitySetup(type: AccountType, nature: AccountNature): boolean {
-  return nature === 'asset' && (type === 'cash' || type === 'checking' || type === 'digital');
+  return (
+    nature === 'asset' &&
+    (type === 'cash' || type === 'checking' || type === 'digital' || type === 'savings')
+  );
 }
 
 export function AccountsPage() {
@@ -698,32 +702,40 @@ export function AccountsPage() {
               <option value="liability">Passivo</option>
             </select>
 
-            <label htmlFor="ledger-account">Conta contabil</label>
-            <select
-              id="ledger-account"
-              value={ledgerAccountId}
-              onChange={(event) => setLedgerAccountId(event.target.value)}
-              required={!isAvailabilityCreateFlow}
-              disabled={isAvailabilityCreateFlow}
-            >
-              {isAvailabilityCreateFlow ? (
-                <option value="">
-                  Conta específica de disponibilidades será criada automaticamente
-                </option>
-              ) : (
-                availableLedgerAccounts.map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {account.code} - {account.name}
-                  </option>
-                ))
-              )}
-            </select>
             {isAvailabilityCreateFlow ? (
-              <p style={{ margin: 0 }}>
-                Para contas de disponibilidades, o sistema cria e vincula automaticamente uma subconta
-                contábil específica.
-              </p>
-            ) : null}
+              <div
+                style={{
+                  border: '1px solid #d7d7d7',
+                  borderRadius: 8,
+                  padding: '0.6rem',
+                  background: '#fafcff',
+                  display: 'grid',
+                  gap: '0.2rem',
+                }}
+              >
+                <strong style={{ fontSize: '0.9rem' }}>Conta contábil vinculada</strong>
+                <span>Criada automaticamente pelo sistema</span>
+                <span style={{ color: '#5f5f5f', fontSize: '0.88rem' }}>
+                  Ao salvar, uma conta contábil será criada e vinculada a esta conta.
+                </span>
+              </div>
+            ) : (
+              <>
+                <label htmlFor="ledger-account">Conta contabil</label>
+                <select
+                  id="ledger-account"
+                  value={ledgerAccountId}
+                  onChange={(event) => setLedgerAccountId(event.target.value)}
+                  required
+                >
+                  {availableLedgerAccounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.code} - {account.name}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
 
             <label htmlFor="opening-balance">Saldo inicial</label>
             <CurrencyInput

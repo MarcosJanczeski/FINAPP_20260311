@@ -203,7 +203,12 @@ export class GetAccountsSetupUseCase {
     for (const account of accounts) {
       const isAvailabilityOperational =
         account.nature === 'asset' &&
-        (account.type === 'cash' || account.type === 'checking' || account.type === 'digital');
+        (
+          account.type === 'cash' ||
+          account.type === 'checking' ||
+          account.type === 'digital' ||
+          account.type === 'savings'
+        );
       if (!isAvailabilityOperational) {
         continue;
       }

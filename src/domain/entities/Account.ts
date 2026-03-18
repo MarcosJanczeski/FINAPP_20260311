@@ -1,6 +1,6 @@
 import type { ID, ISODateString } from '../types/common';
 
-export type AccountType = 'cash' | 'checking' | 'digital' | 'investment' | 'other';
+export type AccountType = 'cash' | 'checking' | 'digital' | 'savings' | 'investment' | 'other';
 export type AccountNature = 'asset' | 'liability';
 export type AccountStatus = 'active' | 'closed';
 

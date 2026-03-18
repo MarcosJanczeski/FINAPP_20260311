@@ -33,7 +33,12 @@ function isAvailabilityAccount(account: Account): boolean {
     return false;
   }
 
-  return account.type === 'cash' || account.type === 'checking' || account.type === 'digital';
+  return (
+    account.type === 'cash' ||
+    account.type === 'checking' ||
+    account.type === 'digital' ||
+    account.type === 'savings'
+  );
 }
 
 function getCashFlowDate(event: PlanningEvent): Date {

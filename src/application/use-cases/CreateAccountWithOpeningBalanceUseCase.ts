@@ -13,7 +13,12 @@ const EQUITY_ROOT_CODE = 'PATRIMONIO_LIQUIDO';
 function isOperationalAvailabilityAccount(input: CreateAccountInputDTO): boolean {
   return (
     input.nature === 'asset' &&
-    (input.type === 'cash' || input.type === 'checking' || input.type === 'digital')
+    (
+      input.type === 'cash' ||
+      input.type === 'checking' ||
+      input.type === 'digital' ||
+      input.type === 'savings'
+    )
   );
 }
 
