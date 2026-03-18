@@ -8,6 +8,8 @@ export type ChartOfAccountsRootCode =
   | 'RECEITAS'
   | 'DESPESAS';
 
+export type ChartOfAccountsNodeType = 'root' | 'grouping' | 'leaf';
+
 export interface ChartOfAccountsCapabilitiesDTO {
   canEdit: boolean;
   canCreateChild: boolean;
@@ -15,26 +17,24 @@ export interface ChartOfAccountsCapabilitiesDTO {
   canDelete: boolean;
 }
 
-export interface ChartOfAccountsItemDTO {
+export interface ChartOfAccountsNodeDTO {
   id: ID;
+  parentId: ID | null;
   code: string;
   name: string;
   kind: LedgerAccountKind;
-  isRoot: boolean;
+  nodeType: ChartOfAccountsNodeType;
   isSystem: boolean;
   isTechnical: boolean;
   hasLedgerEntries: boolean;
   usageCount: number;
+  hasCodeConflict: boolean;
+  codeConflictCount: number;
   capabilities: ChartOfAccountsCapabilitiesDTO;
-}
-
-export interface ChartOfAccountsGroupDTO {
-  rootCode: ChartOfAccountsRootCode;
-  root: ChartOfAccountsItemDTO;
-  children: ChartOfAccountsItemDTO[];
+  children: ChartOfAccountsNodeDTO[];
 }
 
 export interface ChartOfAccountsSetupDTO {
   controlCenterId: ID;
-  groups: ChartOfAccountsGroupDTO[];
+  roots: ChartOfAccountsNodeDTO[];
 }

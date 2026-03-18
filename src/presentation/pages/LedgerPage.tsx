@@ -105,6 +105,7 @@ export function LedgerPage() {
     >
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
         <Link to={ROUTES.dashboard}>Voltar para dashboard</Link>
+        <Link to={ROUTES.chartOfAccounts}>Ir para plano de contas</Link>
         <Link to={ROUTES.accounts}>Ir para contas</Link>
       </div>
 

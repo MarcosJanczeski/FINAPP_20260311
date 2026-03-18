@@ -4,6 +4,7 @@ export const ROUTES = {
   signup: '/signup',
   welcome: '/welcome',
   dashboard: '/dashboard',
+  chartOfAccounts: '/chart-of-accounts',
   accounts: '/accounts',
   ledger: '/ledger',
   creditCards: '/credit-cards',

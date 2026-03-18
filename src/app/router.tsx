@@ -3,6 +3,7 @@ import { ROUTES } from '../shared/constants/routes';
 import { RequireAuth } from '../presentation/components/RequireAuth';
 import { RequireGuest } from '../presentation/components/RequireGuest';
 import { DashboardPage } from '../presentation/pages/DashboardPage';
+import { ChartOfAccountsPage } from '../presentation/pages/ChartOfAccountsPage';
 import { AccountsPage } from '../presentation/pages/AccountsPage';
 import { CreditCardsPage } from '../presentation/pages/CreditCardsPage';
 import { LedgerPage } from '../presentation/pages/LedgerPage';
@@ -48,6 +49,14 @@ export const appRouter = createBrowserRouter([
     element: (
       <RequireAuth>
         <DashboardPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: ROUTES.chartOfAccounts,
+    element: (
+      <RequireAuth>
+        <ChartOfAccountsPage />
       </RequireAuth>
     ),
   },
