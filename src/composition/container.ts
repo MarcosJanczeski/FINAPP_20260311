@@ -9,6 +9,7 @@ import { CreateOrUpdatePersonalControlCenterUseCase } from '../application/use-c
 import { GetWelcomeSetupUseCase } from '../application/use-cases/GetWelcomeSetupUseCase';
 import { GetAccountsSetupUseCase } from '../application/use-cases/GetAccountsSetupUseCase';
 import { GetChartOfAccountsSetupUseCase } from '../application/use-cases/GetChartOfAccountsSetupUseCase';
+import { CreateChartOfAccountsNodeUseCase } from '../application/use-cases/CreateChartOfAccountsNodeUseCase';
 import { CreateAccountWithOpeningBalanceUseCase } from '../application/use-cases/CreateAccountWithOpeningBalanceUseCase';
 import { UpdateAccountProfileUseCase } from '../application/use-cases/UpdateAccountProfileUseCase';
 import { AdjustAccountOpeningUseCase } from '../application/use-cases/AdjustAccountOpeningUseCase';
@@ -50,6 +51,7 @@ export interface AppContainer {
     createOrUpdatePersonalControlCenter: CreateOrUpdatePersonalControlCenterUseCase;
     getAccountsSetup: GetAccountsSetupUseCase;
     getChartOfAccountsSetup: GetChartOfAccountsSetupUseCase;
+    createChartOfAccountsNode: CreateChartOfAccountsNodeUseCase;
     createAccountWithOpeningBalance: CreateAccountWithOpeningBalanceUseCase;
     updateAccountProfile: UpdateAccountProfileUseCase;
     adjustAccountOpening: AdjustAccountOpeningUseCase;
@@ -108,6 +110,9 @@ export function createAppContainer(): AppContainer {
       repositories.controlCenterRepository,
       repositories.ledgerAccountRepository,
       repositories.ledgerEntryRepository,
+    ),
+    createChartOfAccountsNode: new CreateChartOfAccountsNodeUseCase(
+      repositories.ledgerAccountRepository,
     ),
     createAccountWithOpeningBalance: new CreateAccountWithOpeningBalanceUseCase(
       repositories.accountRepository,
