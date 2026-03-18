@@ -63,6 +63,13 @@ class InMemoryLedgerAccountRepository implements LedgerAccountRepository {
     }
     this.accounts.push(account);
   }
+
+  async delete(id: string): Promise<void> {
+    const index = this.accounts.findIndex((account) => account.id === id);
+    if (index >= 0) {
+      this.accounts.splice(index, 1);
+    }
+  }
 }
 
 class InMemoryLedgerEntryRepository implements LedgerEntryRepository {

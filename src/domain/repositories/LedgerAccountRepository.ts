@@ -6,4 +6,5 @@ export interface LedgerAccountRepository {
   getByCode(controlCenterId: ID, code: string): Promise<LedgerAccount | null>;
   listByControlCenter(controlCenterId: ID): Promise<LedgerAccount[]>;
   save(account: LedgerAccount): Promise<void>;
+  delete(id: ID): Promise<void>;
 }

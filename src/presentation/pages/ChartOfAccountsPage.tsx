@@ -21,6 +21,7 @@ export function ChartOfAccountsPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [roots, setRoots] = useState<ChartOfAccountsNodeDTO[]>([]);
   const [expandedNodeIds, setExpandedNodeIds] = useState<Record<string, boolean>>({});
   const [createParentId, setCreateParentId] = useState<string | null>(null);
@@ -92,6 +93,8 @@ export function ChartOfAccountsPage() {
     if (!node.capabilities.canCreateChild) {
       return;
     }
+    setError(null);
+    setSuccess(null);
     cancelEdit();
     setCreateParentId(node.id);
     setCreateParentLabel(`${node.code} - ${node.name}`);
@@ -114,6 +117,8 @@ export function ChartOfAccountsPage() {
     if (!node.capabilities.canEdit) {
       return;
     }
+    setError(null);
+    setSuccess(null);
     cancelCreate();
     setEditNodeId(node.id);
     setEditNodeLabel(`${node.code} - ${node.name}`);
@@ -155,6 +160,7 @@ export function ChartOfAccountsPage() {
     }
 
     setError(null);
+    setSuccess(null);
     setIsSavingCreate(true);
     try {
       await container.useCases.createChartOfAccountsNode.execute({
@@ -165,6 +171,7 @@ export function ChartOfAccountsPage() {
       });
       await refreshTree();
       cancelCreate();
+      setSuccess('Subconta criada com sucesso.');
     } catch (currentError) {
       setError(currentError instanceof Error ? currentError.message : 'Falha ao criar conta contábil.');
     } finally {
@@ -180,6 +187,7 @@ export function ChartOfAccountsPage() {
     }
 
     setError(null);
+    setSuccess(null);
     setIsSavingEdit(true);
     try {
       await container.useCases.updateChartOfAccountsNode.execute({
@@ -190,10 +198,47 @@ export function ChartOfAccountsPage() {
       });
       await refreshTree();
       cancelEdit();
+      setSuccess('Conta atualizada com sucesso.');
     } catch (currentError) {
       setError(currentError instanceof Error ? currentError.message : 'Falha ao atualizar conta contábil.');
     } finally {
       setIsSavingEdit(false);
+    }
+  };
+
+  const handleRemoveOrArchive = async (node: ChartOfAccountsNodeDTO) => {
+    if (!createControlCenterId) {
+      setError('Contexto de remoção inválido.');
+      return;
+    }
+
+    const actionLabel = node.capabilities.canDelete ? 'Excluir' : 'Inativar';
+    const confirmed = window.confirm(
+      `${actionLabel} a conta contábil "${node.code} - ${node.name}"?`,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setError(null);
+    setSuccess(null);
+    try {
+      const result = await container.useCases.removeOrArchiveChartOfAccountsNode.execute({
+        controlCenterId: createControlCenterId,
+        ledgerAccountId: node.id,
+      });
+      await refreshTree();
+      if (result.outcome === 'deleted') {
+        setSuccess('Conta excluída com sucesso.');
+      } else {
+        setSuccess('Conta inativada com sucesso.');
+      }
+    } catch (currentError) {
+      setError(
+        currentError instanceof Error
+          ? currentError.message
+          : 'Falha ao remover/inativar conta contábil.',
+      );
     }
   };
 
@@ -218,6 +263,7 @@ export function ChartOfAccountsPage() {
       </p>
 
       {error ? <p>{error}</p> : null}
+      {success ? <p>{success}</p> : null}
 
       <section style={{ marginTop: '1rem' }}>
         <h2>Estrutura por raízes obrigatórias</h2>
@@ -307,6 +353,7 @@ export function ChartOfAccountsPage() {
                           onToggle={toggleNode}
                           onCreateClick={startCreateForNode}
                           onEditClick={startEditForNode}
+                          onRemoveOrArchiveClick={handleRemoveOrArchive}
                           createParentId={createParentId}
                           createParentLabel={createParentLabel}
                           createName={createName}
@@ -491,6 +538,7 @@ function ChartNodeRow({
   onToggle,
   onCreateClick,
   onEditClick,
+  onRemoveOrArchiveClick,
   createParentId,
   createParentLabel,
   createName,
@@ -516,6 +564,7 @@ function ChartNodeRow({
   onToggle: (nodeId: string) => void;
   onCreateClick: (node: ChartOfAccountsNodeDTO) => void;
   onEditClick: (node: ChartOfAccountsNodeDTO) => void;
+  onRemoveOrArchiveClick: (node: ChartOfAccountsNodeDTO) => void;
   createParentId: string | null;
   createParentLabel: string;
   createName: string;
@@ -601,6 +650,21 @@ function ChartNodeRow({
               +
             </button>
           ) : null}
+
+          {node.capabilities.canDelete || node.capabilities.canArchive ? (
+            <button
+              type="button"
+              onClick={() => onRemoveOrArchiveClick(node)}
+              style={{ height: 26 }}
+              aria-label={
+                node.capabilities.canDelete
+                  ? `Excluir ${node.code}`
+                  : `Inativar ${node.code}`
+              }
+            >
+              {node.capabilities.canDelete ? 'Excluir' : 'Inativar'}
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -641,6 +705,7 @@ function ChartNodeRow({
               onToggle={onToggle}
               onCreateClick={onCreateClick}
               onEditClick={onEditClick}
+              onRemoveOrArchiveClick={onRemoveOrArchiveClick}
               createParentId={createParentId}
               createParentLabel={createParentLabel}
               createName={createName}

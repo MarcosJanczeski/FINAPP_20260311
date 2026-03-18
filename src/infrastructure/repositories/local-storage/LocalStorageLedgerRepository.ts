@@ -38,6 +38,11 @@ export class LocalStorageLedgerAccountRepository implements LedgerAccountReposit
     this.storage.setItem<LedgerAccount[]>(STORAGE_KEYS.ledgerAccounts, accounts);
   }
 
+  async delete(id: ID): Promise<void> {
+    const accounts = this.readAccounts().filter((account) => account.id !== id);
+    this.storage.setItem<LedgerAccount[]>(STORAGE_KEYS.ledgerAccounts, accounts);
+  }
+
   private readAccounts(): LedgerAccount[] {
     const rawAccounts = this.storage.getItem<Array<Partial<LedgerAccount>>>(STORAGE_KEYS.ledgerAccounts) ?? [];
 

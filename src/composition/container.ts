@@ -11,6 +11,7 @@ import { GetAccountsSetupUseCase } from '../application/use-cases/GetAccountsSet
 import { GetChartOfAccountsSetupUseCase } from '../application/use-cases/GetChartOfAccountsSetupUseCase';
 import { CreateChartOfAccountsNodeUseCase } from '../application/use-cases/CreateChartOfAccountsNodeUseCase';
 import { UpdateChartOfAccountsNodeUseCase } from '../application/use-cases/UpdateChartOfAccountsNodeUseCase';
+import { RemoveOrArchiveChartOfAccountsNodeUseCase } from '../application/use-cases/RemoveOrArchiveChartOfAccountsNodeUseCase';
 import { CreateAccountWithOpeningBalanceUseCase } from '../application/use-cases/CreateAccountWithOpeningBalanceUseCase';
 import { UpdateAccountProfileUseCase } from '../application/use-cases/UpdateAccountProfileUseCase';
 import { AdjustAccountOpeningUseCase } from '../application/use-cases/AdjustAccountOpeningUseCase';
@@ -54,6 +55,7 @@ export interface AppContainer {
     getChartOfAccountsSetup: GetChartOfAccountsSetupUseCase;
     createChartOfAccountsNode: CreateChartOfAccountsNodeUseCase;
     updateChartOfAccountsNode: UpdateChartOfAccountsNodeUseCase;
+    removeOrArchiveChartOfAccountsNode: RemoveOrArchiveChartOfAccountsNodeUseCase;
     createAccountWithOpeningBalance: CreateAccountWithOpeningBalanceUseCase;
     updateAccountProfile: UpdateAccountProfileUseCase;
     adjustAccountOpening: AdjustAccountOpeningUseCase;
@@ -118,6 +120,10 @@ export function createAppContainer(): AppContainer {
     ),
     updateChartOfAccountsNode: new UpdateChartOfAccountsNodeUseCase(
       repositories.ledgerAccountRepository,
+    ),
+    removeOrArchiveChartOfAccountsNode: new RemoveOrArchiveChartOfAccountsNodeUseCase(
+      repositories.ledgerAccountRepository,
+      repositories.ledgerEntryRepository,
     ),
     createAccountWithOpeningBalance: new CreateAccountWithOpeningBalanceUseCase(
       repositories.accountRepository,

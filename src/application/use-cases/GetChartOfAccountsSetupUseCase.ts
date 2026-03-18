@@ -305,11 +305,13 @@ export class GetChartOfAccountsSetupUseCase {
     }
 
     if (input.nodeType === 'grouping') {
+      const canArchive = !input.isSystem && !input.hasChildren;
+      const canDelete = canArchive && input.usageCount === 0;
       return {
         canEdit: !input.isSystem,
         canCreateChild: true,
-        canArchive: false,
-        canDelete: false,
+        canArchive,
+        canDelete,
       };
     }
 
@@ -325,7 +327,7 @@ export class GetChartOfAccountsSetupUseCase {
     return {
       canEdit: true,
       canCreateChild: false,
-      canArchive: input.usageCount === 0 && !input.hasChildren,
+      canArchive: !input.hasChildren,
       canDelete: input.usageCount === 0 && !input.hasChildren,
     };
   }
