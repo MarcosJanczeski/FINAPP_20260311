@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import type { AccountNature, AccountType } from '../../domain/entities/Account';
@@ -54,6 +54,8 @@ export function AccountsPage() {
 
   const [adjustOpeningBalanceCents, setAdjustOpeningBalanceCents] = useState(0);
   const [adjustReason, setAdjustReason] = useState('');
+  const [openActionsMenuAccountId, setOpenActionsMenuAccountId] = useState<string | null>(null);
+  const statementSectionRef = useRef<HTMLElement | null>(null);
 
   const selectedAccount = useMemo(
     () => accounts.find((account) => account.id === selectedAccountId) ?? null,
@@ -188,6 +190,20 @@ export function AccountsPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const scrollToStatementSection = () => {
+    statementSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const focusStatementForAccount = (accountId: string) => {
+    setSelectedAccountId(accountId);
+    setOpenActionsMenuAccountId(null);
+    setTimeout(() => {
+      scrollToStatementSection();
+      const select = document.getElementById('statement-account-select') as HTMLSelectElement | null;
+      select?.focus();
+    }, 100);
+  };
+
   const focusFormById = (inputId: string, sectionId: string) => {
     const section = document.getElementById(sectionId);
     section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -216,6 +232,29 @@ export function AccountsPage() {
       focusFormById('adjust-opening-balance', 'accounts-form-adjust');
     }
   }, [activeForm]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('[data-account-actions-menu="true"]')) {
+        return;
+      }
+      setOpenActionsMenuAccountId(null);
+    };
+
+    const handleEscClose = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpenActionsMenuAccountId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscClose);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscClose);
+    };
+  }, []);
 
   const startCreate = () => {
     clearMessages();
@@ -454,10 +493,77 @@ export function AccountsPage() {
                   background: account.status === 'active' ? '#ffffff' : '#f7f7f7',
                   borderRadius: 8,
                   padding: '0.75rem',
+                  paddingRight: '2.9rem',
                   display: 'grid',
                   gap: '0.35rem',
+                  position: 'relative',
                 }}
               >
+                <div data-account-actions-menu="true" style={{ position: 'absolute', top: '0.5rem', right: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setOpenActionsMenuAccountId((current) =>
+                        current === account.id ? null : account.id,
+                      )
+                    }
+                    aria-expanded={openActionsMenuAccountId === account.id}
+                    aria-label={`Abrir ações da conta ${account.name}`}
+                  >
+                    ⋮
+                  </button>
+                  {openActionsMenuAccountId === account.id ? (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        right: 0,
+                        top: 'calc(100% + 0.25rem)',
+                        border: '1px solid #d7d7d7',
+                        borderRadius: 8,
+                        background: '#fff',
+                        boxShadow: '0 8px 20px rgba(0,0,0,0.12)',
+                        padding: '0.4rem',
+                        display: 'grid',
+                        gap: '0.35rem',
+                        minWidth: 170,
+                        zIndex: 20,
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenActionsMenuAccountId(null);
+                          startAdjust(account);
+                        }}
+                        disabled={account.status === 'closed'}
+                      >
+                        Ajustar saldo
+                      </button>
+                      {account.status === 'active' ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpenActionsMenuAccountId(null);
+                            void handleCloseAccount(account);
+                          }}
+                          disabled={isSaving}
+                        >
+                          Encerrar conta
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOpenActionsMenuAccountId(null);
+                          void handleDeleteAccount(account);
+                        }}
+                        disabled={isSaving}
+                      >
+                        Excluir
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
                 <strong style={{ fontSize: '0.95rem' }}>{account.name}</strong>
                 <span
                   style={{
@@ -468,6 +574,9 @@ export function AccountsPage() {
                 >
                   {account.nature === 'asset' ? 'ativo' : 'passivo'} •{' '}
                   {account.status === 'closed' ? 'encerrada' : 'ativa'}
+                </span>
+                <span style={{ color: '#5f5f5f', fontSize: '0.88rem' }}>
+                  Tipo: {ACCOUNT_TYPE_OPTIONS.find((option) => option.value === account.type)?.label ?? account.type}
                 </span>
                 <strong style={{ color: '#2b2b2b' }}>
                   {formatCurrencyFromCents(account.currentBalanceCents)}
@@ -481,41 +590,12 @@ export function AccountsPage() {
                   <button type="button" onClick={() => startEdit(account)}>
                     Editar
                   </button>
-                  <details>
-                    <summary style={{ cursor: 'pointer' }}>Ações</summary>
-                    <div
-                      style={{
-                        display: 'grid',
-                        gap: '0.35rem',
-                        marginTop: '0.4rem',
-                        paddingLeft: '0.15rem',
-                      }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => startAdjust(account)}
-                        disabled={account.status === 'closed'}
-                      >
-                        Ajustar saldo
-                      </button>
-                      {account.status === 'active' ? (
-                        <button
-                          type="button"
-                          onClick={() => void handleCloseAccount(account)}
-                          disabled={isSaving}
-                        >
-                          Encerrar conta
-                        </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        onClick={() => void handleDeleteAccount(account)}
-                        disabled={isSaving}
-                      >
-                        Excluir
-                      </button>
-                    </div>
-                  </details>
+                  <button
+                    type="button"
+                    onClick={() => focusStatementForAccount(account.id)}
+                  >
+                    Ver extrato
+                  </button>
                 </div>
               </li>
             ))}
@@ -523,7 +603,7 @@ export function AccountsPage() {
         )}
       </section>
 
-      <section style={{ marginTop: '1rem' }}>
+      <section ref={statementSectionRef} style={{ marginTop: '1rem' }}>
         <h2>Extrato da conta (consulta)</h2>
         {accounts.length > 0 ? (
           <div style={{ display: 'grid', gap: '0.5rem', maxWidth: 420 }}>
