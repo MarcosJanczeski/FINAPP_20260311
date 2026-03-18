@@ -5,6 +5,7 @@ import type { LedgerAccountRepository } from '../../domain/repositories/LedgerAc
 import type { LedgerEntryRepository } from '../../domain/repositories/LedgerEntryRepository';
 import type { PlanningEventRepository } from '../../domain/repositories/PlanningEventRepository';
 import type { ID, ISODateString } from '../../domain/types/common';
+import { assertPostingLedgerLines } from '../services/ledgerPostingGuard';
 
 interface ConfirmRecurrencePlanningEventInput {
   id: ID;
@@ -60,6 +61,11 @@ export class ConfirmRecurrencePlanningEventUseCase {
       confirmedByUserId: input.confirmedByUserId,
     });
 
+    await assertPostingLedgerLines({
+      controlCenterId: input.controlCenterId,
+      lines: recognitionLedgerEntry.lines,
+      ledgerAccountRepository: this.ledgerAccountRepository,
+    });
     await this.ledgerEntryRepository.save(recognitionLedgerEntry);
 
     const updated: PlanningEvent = {
@@ -163,12 +169,24 @@ export class ConfirmRecurrencePlanningEventUseCase {
       return existing;
     }
 
+    const rootCodeByKind: Record<LedgerAccount['kind'], string> = {
+      asset: 'ATIVO',
+      liability: 'PASSIVO',
+      equity: 'PATRIMONIO_LIQUIDO',
+      revenue: 'RECEITAS',
+      expense: 'DESPESAS',
+    };
+    const parentLedgerAccountId =
+      (await this.ledgerAccountRepository.getByCode(controlCenterId, rootCodeByKind[kind]))?.id ?? null;
+
     const created: LedgerAccount = {
       id: crypto.randomUUID(),
       controlCenterId,
       code,
       name,
       kind,
+      accountRole: 'posting',
+      parentLedgerAccountId,
       isSystem: true,
       createdAt: new Date().toISOString(),
     };

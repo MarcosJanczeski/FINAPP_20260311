@@ -9,52 +9,98 @@ import { getCurrentBalanceFromLedger } from '../services/accountAvailabilityLedg
 
 const AVAILABILITY_BUCKET_CODE = 'ATIVO:DISPONIBILIDADES';
 
-const DEFAULT_LEDGER_ACCOUNTS: ReadonlyArray<Omit<LedgerAccount, 'id' | 'createdAt' | 'controlCenterId'>> =
+const DEFAULT_LEDGER_ACCOUNTS: ReadonlyArray<
+  Omit<LedgerAccount, 'id' | 'createdAt' | 'controlCenterId' | 'parentLedgerAccountId'> & {
+    parentCode: string | null;
+  }
+> =
   [
-    { code: 'ATIVO', name: 'ATIVO', kind: 'asset', isSystem: true },
-    { code: 'PASSIVO', name: 'PASSIVO', kind: 'liability', isSystem: true },
+    {
+      code: 'ATIVO',
+      name: 'ATIVO',
+      kind: 'asset',
+      accountRole: 'grouping',
+      parentCode: null,
+      isSystem: true,
+    },
+    {
+      code: 'PASSIVO',
+      name: 'PASSIVO',
+      kind: 'liability',
+      accountRole: 'grouping',
+      parentCode: null,
+      isSystem: true,
+    },
     {
       code: 'PATRIMONIO_LIQUIDO',
       name: 'PATRIMONIO LIQUIDO',
       kind: 'equity',
+      accountRole: 'grouping',
+      parentCode: null,
       isSystem: true,
     },
-    { code: 'RECEITAS', name: 'RECEITAS', kind: 'revenue', isSystem: true },
-    { code: 'DESPESAS', name: 'DESPESAS', kind: 'expense', isSystem: true },
+    {
+      code: 'RECEITAS',
+      name: 'RECEITAS',
+      kind: 'revenue',
+      accountRole: 'grouping',
+      parentCode: null,
+      isSystem: true,
+    },
+    {
+      code: 'DESPESAS',
+      name: 'DESPESAS',
+      kind: 'expense',
+      accountRole: 'grouping',
+      parentCode: null,
+      isSystem: true,
+    },
     {
       code: 'ATIVO:DISPONIBILIDADES',
       name: 'Ativo - Disponibilidades',
       kind: 'asset',
+      accountRole: 'grouping',
+      parentCode: 'ATIVO',
       isSystem: true,
     },
     {
       code: 'ATIVO:RECEBIVEIS',
       name: 'Ativo - Recebiveis',
       kind: 'asset',
+      accountRole: 'posting',
+      parentCode: 'ATIVO',
       isSystem: true,
     },
     {
       code: 'PASSIVO:OBRIGACOES',
       name: 'Passivo - Obrigacoes',
       kind: 'liability',
+      accountRole: 'posting',
+      parentCode: 'PASSIVO',
       isSystem: true,
     },
     {
       code: 'PL:SALDOS_INICIAIS',
       name: 'PL - Saldos Iniciais',
       kind: 'equity',
+      accountRole: 'posting',
+      parentCode: 'PATRIMONIO_LIQUIDO',
       isSystem: true,
     },
     {
       code: 'RECEITA:OPERACIONAL',
       name: 'Receita - Operacional',
       kind: 'revenue',
+      accountRole: 'posting',
+      parentCode: 'RECEITAS',
       isSystem: true,
     },
     {
       code: 'DESPESA:OPERACIONAL',
       name: 'Despesa - Operacional',
       kind: 'expense',
+      accountRole: 'posting',
+      parentCode: 'DESPESAS',
       isSystem: true,
     },
   ];
@@ -98,21 +144,33 @@ export class GetAccountsSetupUseCase {
   }
 
   private async ensureDefaultLedgerAccounts(controlCenterId: ID): Promise<void> {
+    const existingByCode = new Map<string, LedgerAccount>();
+
     for (const template of DEFAULT_LEDGER_ACCOUNTS) {
-      const existing = await this.ledgerAccountRepository.getByCode(controlCenterId, template.code);
+      const existing =
+        existingByCode.get(template.code) ??
+        (await this.ledgerAccountRepository.getByCode(controlCenterId, template.code));
       if (existing) {
+        existingByCode.set(template.code, existing);
         continue;
       }
 
-      await this.ledgerAccountRepository.save({
+      const parentLedgerAccountId =
+        template.parentCode !== null ? existingByCode.get(template.parentCode)?.id ?? null : null;
+
+      const created = {
         id: crypto.randomUUID(),
         controlCenterId,
         code: template.code,
         name: template.name,
         kind: template.kind,
+        accountRole: template.accountRole,
+        parentLedgerAccountId,
         isSystem: template.isSystem,
         createdAt: new Date().toISOString(),
-      });
+      };
+      await this.ledgerAccountRepository.save(created);
+      existingByCode.set(template.code, created);
     }
   }
 
@@ -159,6 +217,8 @@ export class GetAccountsSetupUseCase {
           code: specificCode,
           name: `Disponibilidades - ${account.name}`,
           kind: 'asset',
+          accountRole: 'posting',
+          parentLedgerAccountId: genericAvailability.id,
           isSystem: false,
           createdAt: new Date().toISOString(),
         };

@@ -4,9 +4,11 @@ import type { AccountRepository } from '../../domain/repositories/AccountReposit
 import type { LedgerAccountRepository } from '../../domain/repositories/LedgerAccountRepository';
 import type { LedgerEntryRepository } from '../../domain/repositories/LedgerEntryRepository';
 import type { CreateAccountInputDTO } from '../dto/AccountSetupDTO';
+import { assertPostingLedgerLines } from '../services/ledgerPostingGuard';
 
 const OPENING_EQUITY_CODE = 'PL:SALDOS_INICIAIS';
 const AVAILABILITY_BUCKET_CODE = 'ATIVO:DISPONIBILIDADES';
+const EQUITY_ROOT_CODE = 'PATRIMONIO_LIQUIDO';
 
 function isOperationalAvailabilityAccount(input: CreateAccountInputDTO): boolean {
   return (
@@ -70,6 +72,11 @@ export class CreateAccountWithOpeningBalanceUseCase {
         amountCents: openingBalanceCents,
         userId: input.createdByUserId,
       });
+      await assertPostingLedgerLines({
+        controlCenterId: account.controlCenterId,
+        lines: entry.lines,
+        ledgerAccountRepository: this.ledgerAccountRepository,
+      });
       await this.ledgerEntryRepository.save(entry);
     }
 
@@ -88,6 +95,9 @@ export class CreateAccountWithOpeningBalanceUseCase {
       code: OPENING_EQUITY_CODE,
       name: 'PL - Saldos Iniciais',
       kind: 'equity' as const,
+      accountRole: 'posting' as const,
+      parentLedgerAccountId:
+        (await this.ledgerAccountRepository.getByCode(controlCenterId, EQUITY_ROOT_CODE))?.id ?? null,
       isSystem: true,
       createdAt: new Date().toISOString(),
     };
@@ -129,6 +139,10 @@ export class CreateAccountWithOpeningBalanceUseCase {
       code,
       name: `Disponibilidades - ${accountName}`,
       kind: 'asset' as const,
+      accountRole: 'posting' as const,
+      parentLedgerAccountId:
+        (await this.ledgerAccountRepository.getByCode(controlCenterId, AVAILABILITY_BUCKET_CODE))?.id ??
+        null,
       isSystem: false,
       createdAt: new Date().toISOString(),
     };

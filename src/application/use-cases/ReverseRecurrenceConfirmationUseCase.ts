@@ -1,9 +1,11 @@
 import type { LedgerEntry } from '../../domain/entities/LedgerEntry';
 import type { PlanningEvent } from '../../domain/entities/PlanningEvent';
+import type { LedgerAccountRepository } from '../../domain/repositories/LedgerAccountRepository';
 import type { LedgerEntryRepository } from '../../domain/repositories/LedgerEntryRepository';
 import type { PlanningEventRepository } from '../../domain/repositories/PlanningEventRepository';
 import type { ID } from '../../domain/types/common';
 import { buildReversalLedgerEntry, resolveActiveLedgerLink } from '../services/recurrenceLedgerLifecycle';
+import { assertPostingLedgerLines } from '../services/ledgerPostingGuard';
 
 interface ReverseRecurrenceConfirmationInput {
   id: ID;
@@ -15,6 +17,7 @@ interface ReverseRecurrenceConfirmationInput {
 export class ReverseRecurrenceConfirmationUseCase {
   constructor(
     private readonly planningEventRepository: PlanningEventRepository,
+    private readonly ledgerAccountRepository: LedgerAccountRepository,
     private readonly ledgerEntryRepository: LedgerEntryRepository,
   ) {}
 
@@ -45,6 +48,11 @@ export class ReverseRecurrenceConfirmationUseCase {
         activeSettlement.entry,
         input.reversedByUserId,
       );
+      await assertPostingLedgerLines({
+        controlCenterId: input.controlCenterId,
+        lines: settlementReversal.lines,
+        ledgerAccountRepository: this.ledgerAccountRepository,
+      });
       await this.ledgerEntryRepository.save(settlementReversal);
       newLinks.push({
         ledgerEntryId: settlementReversal.id,
@@ -74,6 +82,11 @@ export class ReverseRecurrenceConfirmationUseCase {
       activeRecognition.entry,
       input.reversedByUserId,
     );
+    await assertPostingLedgerLines({
+      controlCenterId: input.controlCenterId,
+      lines: reversalEntry.lines,
+      ledgerAccountRepository: this.ledgerAccountRepository,
+    });
     await this.ledgerEntryRepository.save(reversalEntry);
 
     const updated: PlanningEvent = {

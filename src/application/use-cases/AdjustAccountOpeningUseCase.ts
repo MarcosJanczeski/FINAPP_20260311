@@ -4,8 +4,10 @@ import type { AccountRepository } from '../../domain/repositories/AccountReposit
 import type { LedgerAccountRepository } from '../../domain/repositories/LedgerAccountRepository';
 import type { LedgerEntryRepository } from '../../domain/repositories/LedgerEntryRepository';
 import type { AdjustAccountOpeningInputDTO } from '../dto/AccountSetupDTO';
+import { assertPostingLedgerLines } from '../services/ledgerPostingGuard';
 
 const OPENING_EQUITY_CODE = 'PL:SALDOS_INICIAIS';
+const EQUITY_ROOT_CODE = 'PATRIMONIO_LIQUIDO';
 
 export class AdjustAccountOpeningUseCase {
   constructor(
@@ -64,6 +66,11 @@ export class AdjustAccountOpeningUseCase {
         reason,
         userId: input.updatedByUserId,
       });
+      await assertPostingLedgerLines({
+        controlCenterId: input.controlCenterId,
+        lines: reversalEntry.lines,
+        ledgerAccountRepository: this.ledgerAccountRepository,
+      });
       await this.ledgerEntryRepository.save(reversalEntry);
     }
 
@@ -84,6 +91,11 @@ export class AdjustAccountOpeningUseCase {
         reason,
         userId: input.updatedByUserId,
       });
+      await assertPostingLedgerLines({
+        controlCenterId: input.controlCenterId,
+        lines: adjustmentEntry.lines,
+        ledgerAccountRepository: this.ledgerAccountRepository,
+      });
       await this.ledgerEntryRepository.save(adjustmentEntry);
     }
 
@@ -102,6 +114,9 @@ export class AdjustAccountOpeningUseCase {
       code: OPENING_EQUITY_CODE,
       name: 'PL - Saldos Iniciais',
       kind: 'equity' as const,
+      accountRole: 'posting' as const,
+      parentLedgerAccountId:
+        (await this.ledgerAccountRepository.getByCode(controlCenterId, EQUITY_ROOT_CODE))?.id ?? null,
       isSystem: true,
       createdAt: new Date().toISOString(),
     };

@@ -39,7 +39,71 @@ export class LocalStorageLedgerAccountRepository implements LedgerAccountReposit
   }
 
   private readAccounts(): LedgerAccount[] {
-    return this.storage.getItem<LedgerAccount[]>(STORAGE_KEYS.ledgerAccounts) ?? [];
+    const rawAccounts = this.storage.getItem<Array<Partial<LedgerAccount>>>(STORAGE_KEYS.ledgerAccounts) ?? [];
+
+    const rootCodeByKind: Record<LedgerAccount['kind'], string> = {
+      asset: 'ATIVO',
+      liability: 'PASSIVO',
+      equity: 'PATRIMONIO_LIQUIDO',
+      revenue: 'RECEITAS',
+      expense: 'DESPESAS',
+    };
+    const rootCodes = new Set(Object.values(rootCodeByKind));
+
+    const byCode = new Map<string, Array<Partial<LedgerAccount>>>();
+    for (const account of rawAccounts) {
+      if (!account.code) {
+        continue;
+      }
+      const current = byCode.get(account.code) ?? [];
+      current.push(account);
+      byCode.set(account.code, current);
+    }
+
+    const resolveFallbackParent = (account: Partial<LedgerAccount>): string | null => {
+      if (!account.code || !account.kind) {
+        return null;
+      }
+      const codeSegments = account.code.split(':');
+      for (let i = codeSegments.length - 1; i > 0; i -= 1) {
+        const candidateCode = codeSegments.slice(0, i).join(':');
+        const parent = (byCode.get(candidateCode) ?? [])
+          .find((candidate) => candidate.id && candidate.kind === account.kind);
+        if (parent?.id) {
+          return parent.id;
+        }
+      }
+      const rootCode = rootCodeByKind[account.kind];
+      const root = (byCode.get(rootCode) ?? []).find((candidate) => candidate.id);
+      return root?.id ?? null;
+    };
+
+    return rawAccounts.map((account) => {
+      const code = account.code ?? '';
+      const isRoot = rootCodes.has(code);
+      const inferredRole = isRoot
+        ? 'grouping'
+        : code === 'ATIVO:DISPONIBILIDADES'
+          ? 'grouping'
+          : 'posting';
+
+      return {
+        id: account.id as LedgerAccount['id'],
+        controlCenterId: account.controlCenterId as LedgerAccount['controlCenterId'],
+        code,
+        name: account.name ?? code,
+        kind: account.kind as LedgerAccount['kind'],
+        accountRole: account.accountRole ?? inferredRole,
+        parentLedgerAccountId:
+          account.parentLedgerAccountId !== undefined
+            ? account.parentLedgerAccountId
+            : isRoot
+              ? null
+              : resolveFallbackParent(account),
+        isSystem: Boolean(account.isSystem),
+        createdAt: account.createdAt ?? new Date(0).toISOString(),
+      };
+    });
   }
 }
 

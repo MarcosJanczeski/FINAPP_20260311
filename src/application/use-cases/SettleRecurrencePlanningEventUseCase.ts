@@ -10,6 +10,7 @@ import {
   resolveActiveLedgerLink,
   sumLedgerEntryAmountByDebit,
 } from '../services/recurrenceLedgerLifecycle';
+import { assertPostingLedgerLines } from '../services/ledgerPostingGuard';
 
 interface SettleRecurrencePlanningEventInput {
   id: ID;
@@ -98,6 +99,11 @@ export class SettleRecurrencePlanningEventUseCase {
         : null;
 
     if (adjustmentLedgerEntry) {
+      await assertPostingLedgerLines({
+        controlCenterId: input.controlCenterId,
+        lines: adjustmentLedgerEntry.lines,
+        ledgerAccountRepository: this.ledgerAccountRepository,
+      });
       await this.ledgerEntryRepository.save(adjustmentLedgerEntry);
     }
 
@@ -112,6 +118,11 @@ export class SettleRecurrencePlanningEventUseCase {
       memo: input.memo,
     });
 
+    await assertPostingLedgerLines({
+      controlCenterId: input.controlCenterId,
+      lines: settlementLedgerEntry.lines,
+      ledgerAccountRepository: this.ledgerAccountRepository,
+    });
     await this.ledgerEntryRepository.save(settlementLedgerEntry);
 
     const now = new Date().toISOString();
@@ -340,12 +351,24 @@ export class SettleRecurrencePlanningEventUseCase {
       return existing;
     }
 
+    const rootCodeByKind: Record<LedgerAccount['kind'], string> = {
+      asset: 'ATIVO',
+      liability: 'PASSIVO',
+      equity: 'PATRIMONIO_LIQUIDO',
+      revenue: 'RECEITAS',
+      expense: 'DESPESAS',
+    };
+    const parentLedgerAccountId =
+      (await this.ledgerAccountRepository.getByCode(controlCenterId, rootCodeByKind[kind]))?.id ?? null;
+
     const created: LedgerAccount = {
       id: crypto.randomUUID(),
       controlCenterId,
       code,
       name,
       kind,
+      accountRole: 'posting',
+      parentLedgerAccountId,
       isSystem: true,
       createdAt: new Date().toISOString(),
     };

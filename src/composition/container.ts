@@ -143,10 +143,12 @@ export function createAppContainer(): AppContainer {
     ),
     reverseRecurrenceConfirmation: new ReverseRecurrenceConfirmationUseCase(
       repositories.planningEventRepository,
+      repositories.ledgerAccountRepository,
       repositories.ledgerEntryRepository,
     ),
     reverseRecurrenceSettlement: new ReverseRecurrenceSettlementUseCase(
       repositories.planningEventRepository,
+      repositories.ledgerAccountRepository,
       repositories.ledgerEntryRepository,
     ),
     settleRecurrencePlanningEvent: new SettleRecurrencePlanningEventUseCase(
@@ -164,6 +166,7 @@ export function createAppContainer(): AppContainer {
       repositories.planningEventRepository,
       new ReverseRecurrenceConfirmationUseCase(
         repositories.planningEventRepository,
+        repositories.ledgerAccountRepository,
         repositories.ledgerEntryRepository,
       ),
     ),

@@ -74,6 +74,7 @@ export class GetChartOfAccountsSetupUseCase {
     const accountsByCode = this.groupAccountsByCode(ledgerAccounts);
     const rootIds = new Set(roots.map((root) => root.id));
 
+    const accountById = new Map(ledgerAccounts.map((account) => [account.id, account]));
     const parentByAccountId = new Map<ID, ID | null>();
     for (const root of roots) {
       parentByAccountId.set(root.id, null);
@@ -83,7 +84,12 @@ export class GetChartOfAccountsSetupUseCase {
     for (const account of nonRootAccounts) {
       parentByAccountId.set(
         account.id,
-        this.resolveParentId(account, accountsByCode, rootsByKind),
+        this.resolveParentId({
+          account,
+          accountById,
+          accountsByCode,
+          rootsByKind,
+        }),
       );
     }
 
@@ -124,6 +130,8 @@ export class GetChartOfAccountsSetupUseCase {
       code,
       name: code.replace(/_/g, ' '),
       kind: ROOT_KIND_BY_CODE[code],
+      accountRole: 'grouping',
+      parentLedgerAccountId: null,
       isSystem: true,
       createdAt: new Date(0).toISOString(),
     };
@@ -143,15 +151,24 @@ export class GetChartOfAccountsSetupUseCase {
     return map;
   }
 
-  private resolveParentId(
-    account: LedgerAccount,
-    accountsByCode: Map<string, LedgerAccount[]>,
-    rootsByKind: Map<LedgerAccountKind, LedgerAccount>,
-  ): ID {
+  private resolveParentId(input: {
+    account: LedgerAccount;
+    accountById: Map<ID, LedgerAccount>;
+    accountsByCode: Map<string, LedgerAccount[]>;
+    rootsByKind: Map<LedgerAccountKind, LedgerAccount>;
+  }): ID {
+    if (input.account.parentLedgerAccountId) {
+      const explicitParent = input.accountById.get(input.account.parentLedgerAccountId);
+      if (explicitParent && explicitParent.kind === input.account.kind) {
+        return explicitParent.id;
+      }
+    }
+
+    const account = input.account;
     const codeSegments = account.code.split(':');
     for (let i = codeSegments.length - 1; i > 0; i -= 1) {
       const candidateCode = codeSegments.slice(0, i).join(':');
-      const candidates = (accountsByCode.get(candidateCode) ?? [])
+      const candidates = (input.accountsByCode.get(candidateCode) ?? [])
         .filter((candidate) => candidate.id !== account.id && candidate.kind === account.kind)
         .sort((left, right) => this.compareAccounts(left, right));
       if (candidates.length > 0) {
@@ -159,7 +176,7 @@ export class GetChartOfAccountsSetupUseCase {
       }
     }
 
-    const rootByKind = rootsByKind.get(account.kind);
+    const rootByKind = input.rootsByKind.get(account.kind);
     if (!rootByKind) {
       throw new Error(`Raiz obrigatoria nao encontrada para o tipo ${account.kind}.`);
     }
@@ -186,7 +203,7 @@ export class GetChartOfAccountsSetupUseCase {
       }),
     );
 
-    const nodeType = this.resolveNodeType(input.account, children.length > 0);
+    const nodeType = this.resolveNodeType(input.account);
     const usageCount = input.usageCountByAccount.get(input.account.id) ?? 0;
     const capabilities = this.resolveCapabilities({
       nodeType,
@@ -215,12 +232,12 @@ export class GetChartOfAccountsSetupUseCase {
     };
   }
 
-  private resolveNodeType(account: LedgerAccount, hasChildren: boolean): ChartOfAccountsNodeType {
+  private resolveNodeType(account: LedgerAccount): ChartOfAccountsNodeType {
     if (this.isRootAccount(account)) {
       return 'root';
     }
 
-    if (hasChildren) {
+    if (account.accountRole === 'grouping') {
       return 'grouping';
     }
 
@@ -251,9 +268,18 @@ export class GetChartOfAccountsSetupUseCase {
       };
     }
 
+    if (input.nodeType === 'grouping') {
+      return {
+        canEdit: true,
+        canCreateChild: true,
+        canArchive: false,
+        canDelete: false,
+      };
+    }
+
     return {
       canEdit: true,
-      canCreateChild: input.nodeType === 'grouping',
+      canCreateChild: false,
       canArchive: input.usageCount === 0 && !input.hasChildren,
       canDelete: input.usageCount === 0 && !input.hasChildren,
     };
