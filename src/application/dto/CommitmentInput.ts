@@ -22,7 +22,7 @@ export interface SettleCommitmentInput {
   commitmentId: string;
   settlementDate: string;
   settledAmountCents: number;
-  settledAccountId: string;
+  settledAccountId?: string;
   settlementDifferenceReason?: string;
 }
 
