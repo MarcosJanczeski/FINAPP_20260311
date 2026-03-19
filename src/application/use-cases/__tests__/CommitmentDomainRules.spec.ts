@@ -60,7 +60,7 @@ function buildCommitment(overrides: Partial<Commitment> = {}): Commitment {
     description: overrides.description ?? 'Conta a pagar',
     amountCents: overrides.amountCents ?? 10000,
     categoryId: overrides.categoryId,
-    counterpartyId: overrides.counterpartyId,
+    counterpartyId: overrides.counterpartyId ?? 'cp-1',
     documentDate: overrides.documentDate ?? isoDateFromToday(-1),
     dueDate: overrides.dueDate ?? isoDateFromToday(3),
     plannedSettlementDate: overrides.plannedSettlementDate ?? isoDateFromToday(3),
@@ -200,6 +200,14 @@ describe('Commitment domain rules', () => {
 
     expect(() => validateCommitmentIdentity(commitment)).toThrow(
       'sourceEventKey e obrigatorio para idempotencia.',
+    );
+  });
+
+  it('counterpartyId e obrigatorio no commitment', () => {
+    const commitment = buildCommitment({ counterpartyId: '   ' });
+
+    expect(() => validateCommitmentIdentity(commitment)).toThrow(
+      'counterpartyId e obrigatorio no commitment.',
     );
   });
 

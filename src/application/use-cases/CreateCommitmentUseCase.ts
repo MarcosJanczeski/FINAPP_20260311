@@ -21,7 +21,11 @@ export class CreateCommitmentUseCase {
       throw new Error('Descricao do commitment e obrigatoria.');
     }
 
-    validateCommitmentIdentity({ sourceEventKey: input.sourceEventKey });
+    const counterpartyId = input.counterpartyId.trim();
+    validateCommitmentIdentity({
+      sourceEventKey: input.sourceEventKey,
+      counterpartyId,
+    });
 
     const existing = await this.commitmentRepository.findBySourceEventKey(
       input.controlCenterId,
@@ -41,7 +45,7 @@ export class CreateCommitmentUseCase {
       description,
       amountCents: input.amountCents,
       categoryId: input.categoryId,
-      counterpartyId: input.counterpartyId,
+      counterpartyId,
       documentDate: input.documentDate,
       dueDate: input.dueDate,
       plannedSettlementDate: input.plannedSettlementDate,

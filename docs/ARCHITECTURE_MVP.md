@@ -249,6 +249,7 @@ Counterparty = entidade financeira operacional externa ao centro de controle
 Diretriz para o MVP:
 
 * `Counterparty` deve ser tratada como entidade transversal para evolução de `commitments`, recorrências, `credit-cards` e referências operacionais no razão
+* `Commitment` deve referenciar contrapartida obrigatória via `counterpartyId` desde a criação
 * integração por API externa para enriquecimento cadastral permanece opcional e futura
 
 ---

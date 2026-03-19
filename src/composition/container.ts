@@ -41,6 +41,7 @@ import { ListCounterpartiesUseCase } from '../application/use-cases/ListCounterp
 import { SearchCounterpartiesByNameUseCase } from '../application/use-cases/SearchCounterpartiesByNameUseCase';
 import { SearchCounterpartiesByDocumentUseCase } from '../application/use-cases/SearchCounterpartiesByDocumentUseCase';
 import { CreateCommitmentUseCase } from '../application/use-cases/CreateCommitmentUseCase';
+import { ListCommitmentsUseCase } from '../application/use-cases/ListCommitmentsUseCase';
 import { SettleCommitmentUseCase } from '../application/use-cases/SettleCommitmentUseCase';
 import { ReverseCommitmentSettlementUseCase } from '../application/use-cases/ReverseCommitmentSettlementUseCase';
 import {
@@ -92,6 +93,7 @@ export interface AppContainer {
     searchCounterpartiesByName: SearchCounterpartiesByNameUseCase;
     searchCounterpartiesByDocument: SearchCounterpartiesByDocumentUseCase;
     createCommitment: CreateCommitmentUseCase;
+    listCommitments: ListCommitmentsUseCase;
     settleCommitment: SettleCommitmentUseCase;
     reverseCommitmentSettlement: ReverseCommitmentSettlementUseCase;
   };
@@ -221,6 +223,7 @@ export function createAppContainer(): AppContainer {
       repositories.counterpartyRepository,
     ),
     createCommitment: new CreateCommitmentUseCase(repositories.commitmentRepository),
+    listCommitments: new ListCommitmentsUseCase(repositories.commitmentRepository),
     settleCommitment: new SettleCommitmentUseCase(repositories.commitmentRepository),
     reverseCommitmentSettlement: new ReverseCommitmentSettlementUseCase(
       repositories.commitmentRepository,

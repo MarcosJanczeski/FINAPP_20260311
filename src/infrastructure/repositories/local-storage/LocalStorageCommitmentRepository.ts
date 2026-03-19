@@ -11,6 +11,10 @@ export class LocalStorageCommitmentRepository implements CommitmentRepository {
   constructor(private readonly storage: StorageDriver) {}
 
   async save(commitment: Commitment): Promise<void> {
+    if (!commitment.counterpartyId?.trim()) {
+      throw new Error('counterpartyId e obrigatorio no commitment.');
+    }
+
     const commitments = this.readAll();
     const index = commitments.findIndex((current) => current.id === commitment.id);
 
@@ -79,6 +83,7 @@ export class LocalStorageCommitmentRepository implements CommitmentRepository {
 
     return commitments.map((commitment) => ({
       ...commitment,
+      counterpartyId: commitment.counterpartyId ?? '',
       amountCents: commitment.amountCents,
       originalAmountCents: commitment.originalAmountCents ?? commitment.amountCents,
       sourceEventKey: commitment.sourceEventKey ?? '',
@@ -92,7 +97,6 @@ export class LocalStorageCommitmentRepository implements CommitmentRepository {
       settlementDifferenceCents: commitment.settlementDifferenceCents ?? undefined,
       settlementDifferenceReason: commitment.settlementDifferenceReason ?? undefined,
       categoryId: commitment.categoryId ?? undefined,
-      counterpartyId: commitment.counterpartyId ?? undefined,
       expectedAccountId: commitment.expectedAccountId ?? undefined,
       sourceId: commitment.sourceId ?? undefined,
       notes: commitment.notes ?? undefined,

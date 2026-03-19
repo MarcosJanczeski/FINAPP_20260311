@@ -5,6 +5,7 @@ import { RequireGuest } from '../presentation/components/RequireGuest';
 import { DashboardPage } from '../presentation/pages/DashboardPage';
 import { ChartOfAccountsPage } from '../presentation/pages/ChartOfAccountsPage';
 import { CounterpartiesPage } from '../presentation/pages/CounterpartiesPage';
+import { CommitmentsPage } from '../presentation/pages/CommitmentsPage';
 import { AccountsPage } from '../presentation/pages/AccountsPage';
 import { CreditCardsPage } from '../presentation/pages/CreditCardsPage';
 import { LedgerPage } from '../presentation/pages/LedgerPage';
@@ -66,6 +67,14 @@ export const appRouter = createBrowserRouter([
     element: (
       <RequireAuth>
         <CounterpartiesPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: ROUTES.commitments,
+    element: (
+      <RequireAuth>
+        <CommitmentsPage />
       </RequireAuth>
     ),
   },

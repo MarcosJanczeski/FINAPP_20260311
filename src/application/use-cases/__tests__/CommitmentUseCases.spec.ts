@@ -56,7 +56,7 @@ function createInput(overrides: Partial<CreateCommitmentInput> = {}): CreateComm
     description: overrides.description ?? 'Conta de energia',
     amountCents: overrides.amountCents ?? 25000,
     categoryId: overrides.categoryId,
-    counterpartyId: overrides.counterpartyId,
+    counterpartyId: overrides.counterpartyId ?? 'cp-1',
     documentDate: overrides.documentDate ?? isoDateFromToday(-1),
     dueDate: overrides.dueDate ?? isoDateFromToday(3),
     plannedSettlementDate: overrides.plannedSettlementDate ?? isoDateFromToday(3),
@@ -80,6 +80,7 @@ describe('Commitment use cases', () => {
 
     expect(saved).toBeTruthy();
     expect(created.status).toBe('confirmed');
+    expect(created.counterpartyId).toBe('cp-1');
     expect(derived.derivedStatus).toBe('confirmed');
     expect(created.ledgerLinks).toHaveLength(1);
     expect(created.ledgerLinks[0].relation).toBe('recognition');
@@ -95,6 +96,18 @@ describe('Commitment use cases', () => {
     await expect(createUseCase.execute(input)).rejects.toThrow(
       'Ja existe commitment para este sourceEventKey no centro de controle.',
     );
+  });
+
+  it('CreateCommitmentUseCase exige counterpartyId obrigatorio', async () => {
+    const repository = new InMemoryCommitmentRepository([]);
+    const createUseCase = new CreateCommitmentUseCase(repository);
+
+    await expect(
+      createUseCase.execute({
+        ...createInput(),
+        counterpartyId: '   ',
+      }),
+    ).rejects.toThrow('counterpartyId e obrigatorio no commitment.');
   });
 
   it('SettleCommitmentUseCase liquida commitment confirmado e deriva settled', async () => {

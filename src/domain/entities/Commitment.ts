@@ -32,7 +32,7 @@ export interface Commitment {
   description: string;
   amountCents: number;
   categoryId?: ID;
-  counterpartyId?: ID;
+  counterpartyId: ID;
   documentDate: ISODateString;
   dueDate: ISODateString;
   plannedSettlementDate: ISODateString;

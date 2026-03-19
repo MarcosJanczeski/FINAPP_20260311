@@ -35,7 +35,7 @@ function makeCommitment(overrides: Partial<Commitment> = {}): Commitment {
     description: overrides.description ?? 'Compromisso de teste',
     amountCents: overrides.amountCents ?? 10000,
     categoryId: overrides.categoryId,
-    counterpartyId: overrides.counterpartyId,
+    counterpartyId: overrides.counterpartyId ?? 'cp-1',
     documentDate: overrides.documentDate ?? '2026-03-10',
     dueDate: overrides.dueDate ?? '2026-03-10',
     plannedSettlementDate: overrides.plannedSettlementDate ?? '2026-03-12',

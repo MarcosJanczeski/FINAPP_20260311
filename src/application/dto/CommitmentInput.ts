@@ -6,7 +6,7 @@ export interface CreateCommitmentInput {
   description: string;
   amountCents: number;
   categoryId?: string;
-  counterpartyId?: string;
+  counterpartyId: string;
   documentDate: string;
   dueDate: string;
   plannedSettlementDate: string;

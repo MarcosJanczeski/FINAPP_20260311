@@ -129,6 +129,7 @@ obrigações e direitos em aberto (contas a pagar/receber)
 
   * contas a pagar
   * contas a receber
+* todo commitment deve possuir `counterpartyId` obrigatório (contrapartida associada)
 * nasce sempre como confirmado
 * impacta DRE no momento da criação
 * deixa de existir como aberto após liquidação

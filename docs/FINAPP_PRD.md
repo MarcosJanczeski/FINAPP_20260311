@@ -118,6 +118,7 @@ Diretriz de uso no MVP:
 
 * `Counterparty` é entidade transversal para evoluções de `commitments`, recorrências, `credit-cards` e referências operacionais no razão
 * integração por API externa (ex.: enriquecimento cadastral) fica como evolução futura opcional
+* todo `Commitment` deve possuir `counterpartyId` obrigatório no momento da criação
 
 ---
 

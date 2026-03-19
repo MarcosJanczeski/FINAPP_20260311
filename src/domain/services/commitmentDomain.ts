@@ -39,9 +39,15 @@ function countByRelation(
   return links.filter((link) => link.relation === relation).length;
 }
 
-export function validateCommitmentIdentity(commitment: Pick<Commitment, 'sourceEventKey'>): void {
+export function validateCommitmentIdentity(
+  commitment: Pick<Commitment, 'sourceEventKey' | 'counterpartyId'>,
+): void {
   if (!commitment.sourceEventKey.trim()) {
     throw new Error('sourceEventKey e obrigatorio para idempotencia.');
+  }
+
+  if (!commitment.counterpartyId.trim()) {
+    throw new Error('counterpartyId e obrigatorio no commitment.');
   }
 }
 
