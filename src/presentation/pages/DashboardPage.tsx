@@ -12,6 +12,7 @@ export function DashboardPage() {
       <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
         <Link to={ROUTES.welcome}>Voltar para welcome</Link>
         <Link to={ROUTES.chartOfAccounts}>Plano de contas</Link>
+        <Link to={ROUTES.counterparties}>Counterparties</Link>
         <Link to={ROUTES.accounts}>Iniciar tour: contas</Link>
         <Link to={ROUTES.ledger}>Ir para lançamentos</Link>
         <button type="button" onClick={() => void logout()}>

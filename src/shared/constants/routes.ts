@@ -6,6 +6,7 @@ export const ROUTES = {
   dashboard: '/dashboard',
   chartOfAccounts: '/chart-of-accounts',
   accounts: '/accounts',
+  counterparties: '/counterparties',
   ledger: '/ledger',
   creditCards: '/credit-cards',
   recurrences: '/recurrences',
