@@ -13,6 +13,7 @@ import { LocalStorageUserRepository } from './LocalStorageUserRepository';
 import { LocalStoragePlanningEventRepository } from './LocalStoragePlanningEventRepository';
 import { LocalStorageRecurrenceRepository } from './LocalStorageRecurrenceRepository';
 import { LocalStorageCounterpartyRepository } from './LocalStorageCounterpartyRepository';
+import { LocalStorageCommitmentRepository } from './LocalStorageCommitmentRepository';
 import type { StorageDriver } from '../../storage/local-storage/driver';
 
 export function createLocalStorageRepositories(storage: StorageDriver) {
@@ -23,6 +24,7 @@ export function createLocalStorageRepositories(storage: StorageDriver) {
     userRepository: new LocalStorageUserRepository(storage),
     personRepository: new LocalStoragePersonRepository(storage),
     counterpartyRepository: new LocalStorageCounterpartyRepository(storage),
+    commitmentRepository: new LocalStorageCommitmentRepository(storage),
     accountRepository: new LocalStorageAccountRepository(storage),
     recurrenceRepository: new LocalStorageRecurrenceRepository(storage),
     planningEventRepository: new LocalStoragePlanningEventRepository(storage),

@@ -40,6 +40,9 @@ import { CreateCounterpartyUseCase } from '../application/use-cases/CreateCounte
 import { ListCounterpartiesUseCase } from '../application/use-cases/ListCounterpartiesUseCase';
 import { SearchCounterpartiesByNameUseCase } from '../application/use-cases/SearchCounterpartiesByNameUseCase';
 import { SearchCounterpartiesByDocumentUseCase } from '../application/use-cases/SearchCounterpartiesByDocumentUseCase';
+import { CreateCommitmentUseCase } from '../application/use-cases/CreateCommitmentUseCase';
+import { SettleCommitmentUseCase } from '../application/use-cases/SettleCommitmentUseCase';
+import { ReverseCommitmentSettlementUseCase } from '../application/use-cases/ReverseCommitmentSettlementUseCase';
 import {
   NoopBudgetMarginPlanningEventSourceProvider,
 } from '../application/services/NoopPlanningEventSourceProviders';
@@ -88,6 +91,9 @@ export interface AppContainer {
     listCounterparties: ListCounterpartiesUseCase;
     searchCounterpartiesByName: SearchCounterpartiesByNameUseCase;
     searchCounterpartiesByDocument: SearchCounterpartiesByDocumentUseCase;
+    createCommitment: CreateCommitmentUseCase;
+    settleCommitment: SettleCommitmentUseCase;
+    reverseCommitmentSettlement: ReverseCommitmentSettlementUseCase;
   };
 }
 
@@ -213,6 +219,11 @@ export function createAppContainer(): AppContainer {
     ),
     searchCounterpartiesByDocument: new SearchCounterpartiesByDocumentUseCase(
       repositories.counterpartyRepository,
+    ),
+    createCommitment: new CreateCommitmentUseCase(repositories.commitmentRepository),
+    settleCommitment: new SettleCommitmentUseCase(repositories.commitmentRepository),
+    reverseCommitmentSettlement: new ReverseCommitmentSettlementUseCase(
+      repositories.commitmentRepository,
     ),
   };
 
