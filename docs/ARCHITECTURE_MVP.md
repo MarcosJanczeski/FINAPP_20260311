@@ -228,6 +228,7 @@ Exemplo de entidades:
 ```text
 User
 Person
+Counterparty
 ControlCenter
 Account
 CreditCard
@@ -236,6 +237,19 @@ RecurringTemplate
 PlanningPeriod
 Transaction
 ```
+
+Separação semântica obrigatória:
+
+```text
+User = conta de acesso
+Person = identidade do usuário / onboarding
+Counterparty = entidade financeira operacional externa ao centro de controle
+```
+
+Diretriz para o MVP:
+
+* `Counterparty` deve ser tratada como entidade transversal para evolução de `commitments`, recorrências, `credit-cards` e referências operacionais no razão
+* integração por API externa para enriquecimento cadastral permanece opcional e futura
 
 ---
 

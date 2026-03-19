@@ -5,6 +5,7 @@ export const STORAGE_KEYS = {
   controlCenters: 'control-centers',
   controlCenterMemberships: 'control-center-memberships',
   accounts: 'accounts',
+  counterparties: 'counterparties',
   recurrences: 'recurrences',
   planningEvents: 'planning-events',
   ledgerAccounts: 'ledger-accounts',

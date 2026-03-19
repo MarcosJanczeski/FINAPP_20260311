@@ -36,6 +36,10 @@ import { VerifyPlanningEventUseCase } from '../application/use-cases/VerifyPlann
 import { UnverifyPlanningEventUseCase } from '../application/use-cases/UnverifyPlanningEventUseCase';
 import { GetAccountAvailabilityStatementUseCase } from '../application/use-cases/GetAccountAvailabilityStatementUseCase';
 import { GetProjectionAvailabilitySummaryUseCase } from '../application/use-cases/GetProjectionAvailabilitySummaryUseCase';
+import { CreateCounterpartyUseCase } from '../application/use-cases/CreateCounterpartyUseCase';
+import { ListCounterpartiesUseCase } from '../application/use-cases/ListCounterpartiesUseCase';
+import { SearchCounterpartiesByNameUseCase } from '../application/use-cases/SearchCounterpartiesByNameUseCase';
+import { SearchCounterpartiesByDocumentUseCase } from '../application/use-cases/SearchCounterpartiesByDocumentUseCase';
 import {
   NoopBudgetMarginPlanningEventSourceProvider,
 } from '../application/services/NoopPlanningEventSourceProviders';
@@ -80,6 +84,10 @@ export interface AppContainer {
     revertRecurrenceOccurrenceCancellation: RevertRecurrenceOccurrenceCancellationUseCase;
     getAccountAvailabilityStatement: GetAccountAvailabilityStatementUseCase;
     getProjectionAvailabilitySummary: GetProjectionAvailabilitySummaryUseCase;
+    createCounterparty: CreateCounterpartyUseCase;
+    listCounterparties: ListCounterpartiesUseCase;
+    searchCounterpartiesByName: SearchCounterpartiesByNameUseCase;
+    searchCounterpartiesByDocument: SearchCounterpartiesByDocumentUseCase;
   };
 }
 
@@ -197,6 +205,14 @@ export function createAppContainer(): AppContainer {
       repositories.accountRepository,
       repositories.ledgerEntryRepository,
       repositories.planningEventRepository,
+    ),
+    createCounterparty: new CreateCounterpartyUseCase(repositories.counterpartyRepository),
+    listCounterparties: new ListCounterpartiesUseCase(repositories.counterpartyRepository),
+    searchCounterpartiesByName: new SearchCounterpartiesByNameUseCase(
+      repositories.counterpartyRepository,
+    ),
+    searchCounterpartiesByDocument: new SearchCounterpartiesByDocumentUseCase(
+      repositories.counterpartyRepository,
     ),
   };
 

@@ -102,6 +102,25 @@ Pessoa Jurídica
 
 ---
 
+# Counterparty
+
+Representa a entidade financeira operacional externa ao centro de controle, usada como sacado/favorecido nos fluxos financeiros.
+
+Separação obrigatória:
+
+```text
+User = conta de acesso
+Person = identidade do usuário / onboarding
+Counterparty = entidade financeira operacional
+```
+
+Diretriz de uso no MVP:
+
+* `Counterparty` é entidade transversal para evoluções de `commitments`, recorrências, `credit-cards` e referências operacionais no razão
+* integração por API externa (ex.: enriquecimento cadastral) fica como evolução futura opcional
+
+---
+
 # Centro de Controle
 
 É a unidade financeira do sistema.
@@ -1016,7 +1035,7 @@ Escopo mínimo:
 ```text
 categorias
 contas
-pessoas (sacados/favorecidos)
+counterparties (sacados/favorecidos)
 ```
 
 ---
