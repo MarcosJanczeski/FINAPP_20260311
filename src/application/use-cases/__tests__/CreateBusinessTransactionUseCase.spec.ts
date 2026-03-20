@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import type { CreateBusinessTransactionInput } from '../../dto/BusinessTransactionInput';
 import { CreateBusinessTransactionUseCase } from '../CreateBusinessTransactionUseCase';
 import type { BusinessTransaction } from '../../../domain/entities/BusinessTransaction';
+import type { LedgerAccount } from '../../../domain/entities/LedgerAccount';
+import type { LedgerEntry } from '../../../domain/entities/LedgerEntry';
 import type { BusinessTransactionRepository } from '../../../domain/repositories/BusinessTransactionRepository';
+import type { LedgerAccountRepository } from '../../../domain/repositories/LedgerAccountRepository';
+import type { LedgerEntryRepository } from '../../../domain/repositories/LedgerEntryRepository';
 
 class InMemoryBusinessTransactionRepository implements BusinessTransactionRepository {
   constructor(private readonly transactions: BusinessTransaction[]) {}
@@ -38,6 +42,129 @@ class InMemoryBusinessTransactionRepository implements BusinessTransactionReposi
   }
 }
 
+class InMemoryLedgerAccountRepository implements LedgerAccountRepository {
+  constructor(private readonly accounts: LedgerAccount[]) {}
+
+  async getById(id: string): Promise<LedgerAccount | null> {
+    return this.accounts.find((account) => account.id === id) ?? null;
+  }
+
+  async getByCode(controlCenterId: string, code: string): Promise<LedgerAccount | null> {
+    return (
+      this.accounts.find(
+        (account) => account.controlCenterId === controlCenterId && account.code === code,
+      ) ?? null
+    );
+  }
+
+  async listByControlCenter(controlCenterId: string): Promise<LedgerAccount[]> {
+    return this.accounts.filter((account) => account.controlCenterId === controlCenterId);
+  }
+
+  async save(account: LedgerAccount): Promise<void> {
+    const index = this.accounts.findIndex((current) => current.id === account.id);
+    if (index >= 0) {
+      this.accounts[index] = account;
+      return;
+    }
+    this.accounts.push(account);
+  }
+
+  async delete(id: string): Promise<void> {
+    const index = this.accounts.findIndex((current) => current.id === id);
+    if (index >= 0) {
+      this.accounts.splice(index, 1);
+    }
+  }
+}
+
+class InMemoryLedgerEntryRepository implements LedgerEntryRepository {
+  constructor(private readonly entries: LedgerEntry[]) {}
+
+  async getById(id: string): Promise<LedgerEntry | null> {
+    return this.entries.find((entry) => entry.id === id) ?? null;
+  }
+
+  async listByControlCenter(controlCenterId: string): Promise<LedgerEntry[]> {
+    return this.entries.filter((entry) => entry.controlCenterId === controlCenterId);
+  }
+
+  async save(entry: LedgerEntry): Promise<void> {
+    const index = this.entries.findIndex((current) => current.id === entry.id);
+    if (index >= 0) {
+      this.entries[index] = entry;
+      return;
+    }
+    this.entries.push(entry);
+  }
+}
+
+function createRootLedgerAccounts(controlCenterId = 'cc-1'): LedgerAccount[] {
+  const createdAt = isoDateFromToday(-30);
+  return [
+    {
+      id: 'root-asset',
+      controlCenterId,
+      code: 'ATIVO',
+      name: 'Ativo',
+      kind: 'asset',
+      accountRole: 'grouping',
+      parentLedgerAccountId: null,
+      isSystem: true,
+      status: 'active',
+      createdAt,
+    },
+    {
+      id: 'root-liability',
+      controlCenterId,
+      code: 'PASSIVO',
+      name: 'Passivo',
+      kind: 'liability',
+      accountRole: 'grouping',
+      parentLedgerAccountId: null,
+      isSystem: true,
+      status: 'active',
+      createdAt,
+    },
+    {
+      id: 'root-equity',
+      controlCenterId,
+      code: 'PATRIMONIO_LIQUIDO',
+      name: 'Patrimonio Liquido',
+      kind: 'equity',
+      accountRole: 'grouping',
+      parentLedgerAccountId: null,
+      isSystem: true,
+      status: 'active',
+      createdAt,
+    },
+    {
+      id: 'root-revenue',
+      controlCenterId,
+      code: 'RECEITAS',
+      name: 'Receitas',
+      kind: 'revenue',
+      accountRole: 'grouping',
+      parentLedgerAccountId: null,
+      isSystem: true,
+      status: 'active',
+      createdAt,
+    },
+    {
+      id: 'root-expense',
+      controlCenterId,
+      code: 'DESPESAS',
+      name: 'Despesas',
+      kind: 'expense',
+      accountRole: 'grouping',
+      parentLedgerAccountId: null,
+      isSystem: true,
+      status: 'active',
+      createdAt,
+    },
+  ];
+}
+
 function isoDateFromToday(daysFromNow: number): string {
   const now = new Date();
   return new Date(
@@ -70,32 +197,55 @@ function createInput(
 describe('CreateBusinessTransactionUseCase', () => {
   it('cria transacao valida, persiste e nasce confirmed com campos iniciais consistentes', async () => {
     const repository = new InMemoryBusinessTransactionRepository([]);
-    const useCase = new CreateBusinessTransactionUseCase(repository);
+    const ledgerAccountRepository = new InMemoryLedgerAccountRepository(createRootLedgerAccounts());
+    const ledgerEntryRepository = new InMemoryLedgerEntryRepository([]);
+    const useCase = new CreateBusinessTransactionUseCase(
+      repository,
+      ledgerAccountRepository,
+      ledgerEntryRepository,
+    );
 
     const created = await useCase.execute(createInput());
     const saved = await repository.getById(created.id);
+    const recognitionEntry = created.recognitionLedgerEntryId
+      ? await ledgerEntryRepository.getById(created.recognitionLedgerEntryId)
+      : null;
 
     expect(saved).toBeTruthy();
     expect(created.status).toBe('confirmed');
     expect(created.commitmentIds).toEqual([]);
-    expect(created.recognitionLedgerEntryId).toBeUndefined();
+    expect(created.recognitionLedgerEntryId).toBeTruthy();
     expect(created.settlementLedgerEntryId).toBeUndefined();
+    expect(recognitionEntry).toBeTruthy();
+    expect(recognitionEntry?.referenceType).toBe('business_transaction_recognition');
+    expect(recognitionEntry?.referenceId).toBe(created.id);
   });
 
   it('bloqueia duplicidade logica por (controlCenterId, sourceEventKey)', async () => {
     const repository = new InMemoryBusinessTransactionRepository([]);
-    const useCase = new CreateBusinessTransactionUseCase(repository);
+    const ledgerAccountRepository = new InMemoryLedgerAccountRepository(createRootLedgerAccounts());
+    const ledgerEntryRepository = new InMemoryLedgerEntryRepository([]);
+    const useCase = new CreateBusinessTransactionUseCase(
+      repository,
+      ledgerAccountRepository,
+      ledgerEntryRepository,
+    );
     const input = createInput({ sourceEventKey: 'manual:business-transaction:dup:1' });
 
     await useCase.execute(input);
     await expect(useCase.execute(input)).rejects.toThrow(
       'Ja existe transacao para este sourceEventKey no centro de controle.',
     );
+    expect((await ledgerEntryRepository.listByControlCenter('cc-1')).length).toBe(1);
   });
 
   it('falha sem sourceEventKey', async () => {
     const repository = new InMemoryBusinessTransactionRepository([]);
-    const useCase = new CreateBusinessTransactionUseCase(repository);
+    const useCase = new CreateBusinessTransactionUseCase(
+      repository,
+      new InMemoryLedgerAccountRepository(createRootLedgerAccounts()),
+      new InMemoryLedgerEntryRepository([]),
+    );
 
     await expect(
       useCase.execute(createInput({ sourceEventKey: '   ' })),
@@ -104,7 +254,11 @@ describe('CreateBusinessTransactionUseCase', () => {
 
   it('falha sem counterpartyId', async () => {
     const repository = new InMemoryBusinessTransactionRepository([]);
-    const useCase = new CreateBusinessTransactionUseCase(repository);
+    const useCase = new CreateBusinessTransactionUseCase(
+      repository,
+      new InMemoryLedgerAccountRepository(createRootLedgerAccounts()),
+      new InMemoryLedgerEntryRepository([]),
+    );
 
     await expect(
       useCase.execute(createInput({ counterpartyId: '   ' })),
@@ -113,7 +267,11 @@ describe('CreateBusinessTransactionUseCase', () => {
 
   it('falha com amountCents invalido', async () => {
     const repository = new InMemoryBusinessTransactionRepository([]);
-    const useCase = new CreateBusinessTransactionUseCase(repository);
+    const useCase = new CreateBusinessTransactionUseCase(
+      repository,
+      new InMemoryLedgerAccountRepository(createRootLedgerAccounts()),
+      new InMemoryLedgerEntryRepository([]),
+    );
 
     await expect(
       useCase.execute(createInput({ amountCents: 10.2 })),
@@ -122,7 +280,11 @@ describe('CreateBusinessTransactionUseCase', () => {
 
   it('falha com documentDate futura quando confirmado', async () => {
     const repository = new InMemoryBusinessTransactionRepository([]);
-    const useCase = new CreateBusinessTransactionUseCase(repository);
+    const useCase = new CreateBusinessTransactionUseCase(
+      repository,
+      new InMemoryLedgerAccountRepository(createRootLedgerAccounts()),
+      new InMemoryLedgerEntryRepository([]),
+    );
 
     await expect(
       useCase.execute(createInput({ documentDate: isoDateFromToday(1) })),
@@ -131,7 +293,11 @@ describe('CreateBusinessTransactionUseCase', () => {
 
   it('falha com dueDate anterior a documentDate', async () => {
     const repository = new InMemoryBusinessTransactionRepository([]);
-    const useCase = new CreateBusinessTransactionUseCase(repository);
+    const useCase = new CreateBusinessTransactionUseCase(
+      repository,
+      new InMemoryLedgerAccountRepository(createRootLedgerAccounts()),
+      new InMemoryLedgerEntryRepository([]),
+    );
 
     await expect(
       useCase.execute(
@@ -145,7 +311,11 @@ describe('CreateBusinessTransactionUseCase', () => {
 
   it('falha com parcelamento invalido', async () => {
     const repository = new InMemoryBusinessTransactionRepository([]);
-    const useCase = new CreateBusinessTransactionUseCase(repository);
+    const useCase = new CreateBusinessTransactionUseCase(
+      repository,
+      new InMemoryLedgerAccountRepository(createRootLedgerAccounts()),
+      new InMemoryLedgerEntryRepository([]),
+    );
 
     await expect(
       useCase.execute(createInput({ installmentCount: 0 })),
@@ -163,7 +333,11 @@ describe('CreateBusinessTransactionUseCase', () => {
 
   it('aceita parcelamento valido quando installmentCount > 1 com periodicidade', async () => {
     const repository = new InMemoryBusinessTransactionRepository([]);
-    const useCase = new CreateBusinessTransactionUseCase(repository);
+    const useCase = new CreateBusinessTransactionUseCase(
+      repository,
+      new InMemoryLedgerAccountRepository(createRootLedgerAccounts()),
+      new InMemoryLedgerEntryRepository([]),
+    );
 
     const created = await useCase.execute(
       createInput({
@@ -176,11 +350,16 @@ describe('CreateBusinessTransactionUseCase', () => {
     expect(created.installmentCount).toBe(12);
     expect(created.installmentPeriodicity).toBe('monthly');
     expect(created.commitmentIds).toEqual([]);
+    expect(created.recognitionLedgerEntryId).toBeTruthy();
   });
 
   it('falha quando settlementMethod = credit_card e creditCardId ausente', async () => {
     const repository = new InMemoryBusinessTransactionRepository([]);
-    const useCase = new CreateBusinessTransactionUseCase(repository);
+    const useCase = new CreateBusinessTransactionUseCase(
+      repository,
+      new InMemoryLedgerAccountRepository(createRootLedgerAccounts()),
+      new InMemoryLedgerEntryRepository([]),
+    );
 
     await expect(
       useCase.execute(
@@ -190,5 +369,44 @@ describe('CreateBusinessTransactionUseCase', () => {
         }),
       ),
     ).rejects.toThrow('creditCardId e obrigatorio quando settlementMethod = credit_card.');
+  });
+
+  it('gera reconhecimento para contexto a vista, a prazo e cartao sem liquidar caixa neste step', async () => {
+    const repository = new InMemoryBusinessTransactionRepository([]);
+    const ledgerEntryRepository = new InMemoryLedgerEntryRepository([]);
+    const useCase = new CreateBusinessTransactionUseCase(
+      repository,
+      new InMemoryLedgerAccountRepository(createRootLedgerAccounts()),
+      ledgerEntryRepository,
+    );
+
+    const cash = await useCase.execute(
+      createInput({
+        sourceEventKey: 'manual:business-transaction:cash:1',
+        settlementMethod: 'cash',
+      }),
+    );
+    const term = await useCase.execute(
+      createInput({
+        sourceEventKey: 'manual:business-transaction:term:1',
+        settlementMethod: 'bank_account',
+      }),
+    );
+    const card = await useCase.execute(
+      createInput({
+        sourceEventKey: 'manual:business-transaction:card:1',
+        settlementMethod: 'credit_card',
+        creditCardId: 'card-1',
+      }),
+    );
+
+    const entries = await ledgerEntryRepository.listByControlCenter('cc-1');
+    expect(entries).toHaveLength(3);
+    expect(cash.recognitionLedgerEntryId).toBeTruthy();
+    expect(term.recognitionLedgerEntryId).toBeTruthy();
+    expect(card.recognitionLedgerEntryId).toBeTruthy();
+    expect(cash.settlementLedgerEntryId).toBeUndefined();
+    expect(term.settlementLedgerEntryId).toBeUndefined();
+    expect(card.settlementLedgerEntryId).toBeUndefined();
   });
 });
