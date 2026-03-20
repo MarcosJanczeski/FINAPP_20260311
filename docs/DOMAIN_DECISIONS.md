@@ -180,9 +180,11 @@ O sistema possui 4 entradas canônicas:
 
 ## 5.3 Cartão de crédito
 
-* gera obrigação (confirmado)
+* compra gera reconhecimento contábil do fato
+* compra compõe obrigação futura da fatura do cartão
 * não afeta caixa no ato
 * liquidação ocorre no pagamento da fatura
+* obrigação aberta relevante para caixa fica no nível da fatura, não da compra individual
 
 ## 5.4 Transferência
 
@@ -268,12 +270,13 @@ Despesa à vista:
 
 Despesa a prazo:
 
-* reconhece no commitment
+* reconhece no fato gerador (`BusinessTransaction`) e deriva commitment em aberto
 * liquida depois
 
 Cartão:
 
-* reconhece na compra
+* reconhece na compra (fato gerador)
+* compra compõe fatura futura
 * liquida no pagamento da fatura
 
 ---

@@ -33,6 +33,7 @@ Congelar o comportamento atualmente esperado do modulo `projection` no MVP, prot
 8. Sync e idempotente por `sourceEventKey`.
 9. Grafico e timeline usam a mesma base.
 10. Estado funcional consolidado ignora vinculos ja revertidos.
+11. Em cartao, compra/parcela compoe fatura futura; obrigacao aberta de caixa relevante fica no nivel da fatura.
 
 ## Cenarios protegidos pela suite atual
 - `recognition -> settlement -> settlement_reversal`

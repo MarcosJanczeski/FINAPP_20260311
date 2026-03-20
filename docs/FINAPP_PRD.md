@@ -128,6 +128,7 @@ Diretriz de entrada operacional (módulo compromissos):
 * parcelamento gera múltiplos commitments irmãos vinculados ao mesmo fato gerador
 * recorrência permanece fluxo distinto
 * rastreabilidade mínima obrigatória: vínculo explícito entre `BusinessTransaction`, `LedgerEntry` de reconhecimento e `Commitment(s)` gerados
+* em cartão de crédito, compra individual gera reconhecimento e compõe fatura futura; o commitment aberto relevante para caixa deve ficar no nível da fatura, não da compra individual
 
 ---
 
@@ -833,6 +834,7 @@ Regras mandatórias de proteção financeira (transversais ao produto):
 * compras no cartão geram obrigação futura e não reduzem caixa no ato da compra
 * pagamento de fatura deve ser o evento que impacta caixa/banco
 * totais de fatura devem ser iguais à soma dos itens importados/classificados
+* compras/parcela de cartão são itens de composição da fatura e não compromissos de caixa isolados
 * eventos gerados (parcelas, recorrências, previsões) devem manter rastreabilidade de origem
 * evitar dupla contagem em todos os fluxos financeiros
 * ajustes devem criar novos registros; não reescrever histórico contábil silenciosamente
