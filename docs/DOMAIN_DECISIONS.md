@@ -138,6 +138,29 @@ obrigações e direitos em aberto (contas a pagar/receber)
 
 commitment = evento confirmado não realizado
 
+## 4.4 Papel no fluxo
+
+* `Commitment` não é ponto de entrada primário da operação comercial
+* `Commitment` é derivado do fato gerador reconhecido contabilmente
+* casos à vista podem gerar zero commitments
+* parcelamento gera múltiplos commitments irmãos vinculados ao mesmo fato gerador
+
+---
+
+# 4B. Fato Gerador Operacional
+
+## 4B.1 Conceito recomendado
+
+`BusinessTransaction` representa a transação comercial/financeira de origem (compra, venda, contratação, parcelamento, outro fato simples).
+
+## 4B.2 Regra canônica
+
+Ao confirmar uma `BusinessTransaction`:
+
+* gera-se o reconhecimento contábil (`LedgerEntry`)
+* geram-se zero, um ou vários `Commitment` derivados
+* mantém-se rastreabilidade explícita entre origem, reconhecimento e obrigações abertas
+
 ---
 
 # 5. Portas de Entrada do Sistema
@@ -150,7 +173,9 @@ O sistema possui 4 entradas canônicas:
 
 ## 5.2 A prazo
 
-* gera commitment (confirmado)
+* registra fato gerador (`BusinessTransaction`)
+* gera reconhecimento contábil
+* gera commitment(s) (confirmado(s))
 * liquidação ocorre depois
 
 ## 5.3 Cartão de crédito
@@ -293,6 +318,26 @@ Cartão:
 * Nem todo evento passa por commitment (ex: à vista)
 * PlanningEvent e Commitment devem convergir conceitualmente
 * LedgerEntry é a fonte oficial para relatórios contábeis
+* recorrência permanece fluxo distinto e não deve ser substituída por parcelamento
+
+## 13.1 Contrato mínimo de rastreabilidade (próxima implementação)
+
+BusinessTransaction:
+
+* id
+* controlCenterId
+* sourceEventKey
+* recognitionLedgerEntryId
+* commitmentIds[]
+
+Commitment (origem):
+
+* originTransactionId
+* originLedgerEntryId
+* installmentGroupId
+* installmentNumber
+* installmentCount
+* installmentPeriodicity
 
 ---
 

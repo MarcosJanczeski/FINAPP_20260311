@@ -233,6 +233,7 @@ ControlCenter
 Account
 CreditCard
 Commitment
+BusinessTransaction
 RecurringTemplate
 PlanningPeriod
 Transaction
@@ -251,6 +252,7 @@ Diretriz para o MVP:
 * `Counterparty` deve ser tratada como entidade transversal para evolução de `commitments`, recorrências, `credit-cards` e referências operacionais no razão
 * `Commitment` deve referenciar contrapartida obrigatória via `counterpartyId` desde a criação
 * integração por API externa para enriquecimento cadastral permanece opcional e futura
+* entrada operacional de compromissos deve evoluir para fato gerador (`BusinessTransaction`) como entidade primária
 
 ---
 
@@ -278,6 +280,32 @@ Casos de uso devem depender apenas de:
 interfaces de repositório
 entidades do domínio
 ```
+
+Diretriz de orquestração (commitments):
+
+* entrada primária: `BusinessTransaction`
+* orquestração: `BusinessTransaction` -> reconhecimento contábil (`LedgerEntry`) -> `Commitment(s)` derivados
+* liquidação e estorno permanecem no ciclo do `Commitment` aberto
+* recorrências permanecem fluxo separado
+
+Contrato mínimo de rastreabilidade (alvo de implementação incremental):
+
+BusinessTransaction:
+
+* id
+* controlCenterId
+* sourceEventKey
+* recognitionLedgerEntryId
+* commitmentIds[]
+
+Commitment (metadados de origem):
+
+* originTransactionId
+* originLedgerEntryId
+* installmentGroupId
+* installmentNumber
+* installmentCount
+* installmentPeriodicity
 
 ---
 

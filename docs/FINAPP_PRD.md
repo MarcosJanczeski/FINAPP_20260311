@@ -120,6 +120,15 @@ Diretriz de uso no MVP:
 * integração por API externa (ex.: enriquecimento cadastral) fica como evolução futura opcional
 * todo `Commitment` deve possuir `counterpartyId` obrigatório no momento da criação
 
+Diretriz de entrada operacional (módulo compromissos):
+
+* a entrada primária do usuário deve representar a transação comercial/financeira de origem (`BusinessTransaction`)
+* ao confirmar a transação: reconhecer contabilmente e gerar `Commitment(s)` derivados quando houver obrigação/direito em aberto
+* operação à vista pode gerar zero commitments
+* parcelamento gera múltiplos commitments irmãos vinculados ao mesmo fato gerador
+* recorrência permanece fluxo distinto
+* rastreabilidade mínima obrigatória: vínculo explícito entre `BusinessTransaction`, `LedgerEntry` de reconhecimento e `Commitment(s)` gerados
+
 ---
 
 # Centro de Controle
