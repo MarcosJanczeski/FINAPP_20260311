@@ -68,9 +68,30 @@ export function validateBusinessTransactionInstallments(
 }
 
 export function validateBusinessTransactionSettlementContext(
-  transaction: Pick<BusinessTransaction, 'settlementMethod' | 'creditCardId'>,
+  transaction: Pick<
+    BusinessTransaction,
+    'settlementMethod' | 'creditCardId' | 'creditCardClosingDay' | 'creditCardDueDay'
+  >,
 ): void {
   if (transaction.settlementMethod === 'credit_card' && !transaction.creditCardId?.trim()) {
     throw new Error('creditCardId e obrigatorio quando settlementMethod = credit_card.');
+  }
+
+  if (transaction.settlementMethod !== 'credit_card') {
+    return;
+  }
+
+  if (!Number.isInteger(transaction.creditCardClosingDay)) {
+    throw new Error('creditCardClosingDay e obrigatorio quando settlementMethod = credit_card.');
+  }
+  if (!Number.isInteger(transaction.creditCardDueDay)) {
+    throw new Error('creditCardDueDay e obrigatorio quando settlementMethod = credit_card.');
+  }
+
+  if ((transaction.creditCardClosingDay ?? 0) < 1 || (transaction.creditCardClosingDay ?? 0) > 31) {
+    throw new Error('creditCardClosingDay deve estar entre 1 e 31.');
+  }
+  if ((transaction.creditCardDueDay ?? 0) < 1 || (transaction.creditCardDueDay ?? 0) > 31) {
+    throw new Error('creditCardDueDay deve estar entre 1 e 31.');
   }
 }

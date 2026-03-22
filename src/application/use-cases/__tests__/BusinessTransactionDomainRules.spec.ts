@@ -29,6 +29,8 @@ function buildTransaction(overrides: Partial<BusinessTransaction> = {}): Busines
     settlementMethod: overrides.settlementMethod ?? 'bank_account',
     expectedSettlementAccountId: overrides.expectedSettlementAccountId ?? 'acc-1',
     creditCardId: overrides.creditCardId,
+    creditCardClosingDay: overrides.creditCardClosingDay,
+    creditCardDueDay: overrides.creditCardDueDay,
     installmentCount: overrides.installmentCount ?? 1,
     installmentPeriodicity: overrides.installmentPeriodicity,
     recognitionLedgerEntryId: overrides.recognitionLedgerEntryId,
@@ -128,10 +130,34 @@ describe('BusinessTransaction domain rules', () => {
     const transaction = buildTransaction({
       settlementMethod: 'credit_card',
       creditCardId: undefined,
+      creditCardClosingDay: 10,
+      creditCardDueDay: 20,
     });
 
     expect(() => validateBusinessTransactionSettlementContext(transaction)).toThrow(
       'creditCardId e obrigatorio quando settlementMethod = credit_card.',
+    );
+  });
+
+  it('falha quando settlementMethod = credit_card sem closingDay ou dueDay', () => {
+    const missingClosing = buildTransaction({
+      settlementMethod: 'credit_card',
+      creditCardId: 'card-1',
+      creditCardClosingDay: undefined,
+      creditCardDueDay: 20,
+    });
+    expect(() => validateBusinessTransactionSettlementContext(missingClosing)).toThrow(
+      'creditCardClosingDay e obrigatorio quando settlementMethod = credit_card.',
+    );
+
+    const missingDue = buildTransaction({
+      settlementMethod: 'credit_card',
+      creditCardId: 'card-1',
+      creditCardClosingDay: 10,
+      creditCardDueDay: undefined,
+    });
+    expect(() => validateBusinessTransactionSettlementContext(missingDue)).toThrow(
+      'creditCardDueDay e obrigatorio quando settlementMethod = credit_card.',
     );
   });
 });

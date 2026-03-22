@@ -17,6 +17,8 @@ export interface CreateBusinessTransactionInput {
   settlementMethod: SettlementMethod;
   expectedSettlementAccountId?: string;
   creditCardId?: string;
+  creditCardClosingDay?: number;
+  creditCardDueDay?: number;
   installmentCount: number;
   installmentPeriodicity?: InstallmentPeriodicity;
   notes?: string;

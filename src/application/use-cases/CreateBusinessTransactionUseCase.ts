@@ -1,9 +1,13 @@
 import type { CreateBusinessTransactionInput } from '../dto/BusinessTransactionInput';
 import type { BusinessTransaction } from '../../domain/entities/BusinessTransaction';
 import type { Commitment } from '../../domain/entities/Commitment';
+import type { CreditCardInvoice } from '../../domain/entities/CreditCardInvoice';
+import type { CreditCardInvoiceItem } from '../../domain/entities/CreditCardInvoiceItem';
 import type { LedgerAccount } from '../../domain/entities/LedgerAccount';
 import type { LedgerEntry } from '../../domain/entities/LedgerEntry';
 import type { CommitmentRepository } from '../../domain/repositories/CommitmentRepository';
+import type { CreditCardInvoiceItemRepository } from '../../domain/repositories/CreditCardInvoiceItemRepository';
+import type { CreditCardInvoiceRepository } from '../../domain/repositories/CreditCardInvoiceRepository';
 import type { LedgerAccountRepository } from '../../domain/repositories/LedgerAccountRepository';
 import type { LedgerEntryRepository } from '../../domain/repositories/LedgerEntryRepository';
 import type { BusinessTransactionRepository } from '../../domain/repositories/BusinessTransactionRepository';
@@ -15,12 +19,15 @@ import {
   validateBusinessTransactionInstallments,
   validateBusinessTransactionSettlementContext,
 } from '../../domain/services/businessTransactionDomain';
+import { resolveCreditCardInvoiceCycle } from '../../domain/services/creditCardInvoiceDomain';
 import { assertPostingLedgerLines } from '../services/ledgerPostingGuard';
 
 export class CreateBusinessTransactionUseCase {
   constructor(
     private readonly businessTransactionRepository: BusinessTransactionRepository,
     private readonly commitmentRepository: CommitmentRepository,
+    private readonly creditCardInvoiceRepository: CreditCardInvoiceRepository,
+    private readonly creditCardInvoiceItemRepository: CreditCardInvoiceItemRepository,
     private readonly ledgerAccountRepository: LedgerAccountRepository,
     private readonly ledgerEntryRepository: LedgerEntryRepository,
   ) {}
@@ -32,6 +39,8 @@ export class CreateBusinessTransactionUseCase {
     const description = input.description.trim();
     const expectedSettlementAccountId = input.expectedSettlementAccountId?.trim() || undefined;
     const creditCardId = input.creditCardId?.trim() || undefined;
+    const creditCardClosingDay = input.creditCardClosingDay;
+    const creditCardDueDay = input.creditCardDueDay;
     const notes = input.notes?.trim() || undefined;
 
     if (!description) {
@@ -67,6 +76,8 @@ export class CreateBusinessTransactionUseCase {
       settlementMethod: input.settlementMethod,
       expectedSettlementAccountId,
       creditCardId,
+      creditCardClosingDay,
+      creditCardDueDay,
       installmentCount: input.installmentCount,
       installmentPeriodicity: input.installmentPeriodicity,
       recognitionLedgerEntryId: undefined,
@@ -128,8 +139,12 @@ export class CreateBusinessTransactionUseCase {
   }): Promise<ID[]> {
     const { transaction, recognitionLedgerEntryId } = input;
 
-    // Cartao compoe fatura futura; neste step nao gera commitment aberto por compra individual.
+    // Cartao compoe fatura futura; nao gera commitment aberto por compra individual.
     if (transaction.settlementMethod === 'credit_card') {
+      await this.createOrUpdateCreditCardInvoices({
+        transaction,
+        recognitionLedgerEntryId,
+      });
       return [];
     }
 
@@ -228,6 +243,233 @@ export class CreateBusinessTransactionUseCase {
     return commitmentIds;
   }
 
+  private async createOrUpdateCreditCardInvoices(input: {
+    transaction: BusinessTransaction;
+    recognitionLedgerEntryId: ID;
+  }): Promise<void> {
+    const { transaction, recognitionLedgerEntryId } = input;
+    if (!transaction.creditCardId) {
+      throw new Error('creditCardId e obrigatorio para transacao de cartao.');
+    }
+
+    const firstDueDate = transaction.documentDate;
+    const installmentDates = this.buildInstallmentDates({
+      firstDueDate,
+      installmentCount: transaction.installmentCount,
+      installmentPeriodicity: transaction.installmentPeriodicity,
+    });
+    const installmentAmounts = this.buildInstallmentAmounts({
+      totalAmountCents: transaction.amountCents,
+      installmentCount: transaction.installmentCount,
+    });
+
+    for (let index = 0; index < transaction.installmentCount; index += 1) {
+      const installmentNumber = index + 1;
+      const installmentCompetenceDate = installmentDates[index];
+      const invoiceCycle = resolveCreditCardInvoiceCycle({
+        competenceDate: installmentCompetenceDate,
+        closingDay: transaction.creditCardClosingDay ?? 0,
+        dueDay: transaction.creditCardDueDay ?? 0,
+      });
+      const itemSourceEventKey = this.buildCreditCardInvoiceItemSourceEventKey(
+        transaction.sourceEventKey,
+        installmentNumber,
+      );
+
+      const existingItem = await this.creditCardInvoiceItemRepository.findBySourceEventKey(
+        transaction.controlCenterId,
+        itemSourceEventKey,
+      );
+      if (existingItem) {
+        continue;
+      }
+
+      const invoice = await this.getOrCreateInvoice({
+        transaction,
+        invoiceCycle,
+      });
+
+      const now = new Date().toISOString();
+      const item: CreditCardInvoiceItem = {
+        id: crypto.randomUUID(),
+        controlCenterId: transaction.controlCenterId,
+        creditCardId: transaction.creditCardId,
+        businessTransactionId: transaction.id,
+        sourceEventKey: itemSourceEventKey,
+        installmentNumber,
+        installmentCount: transaction.installmentCount,
+        amountCents: installmentAmounts[index],
+        documentDate: installmentCompetenceDate,
+        invoiceId: invoice.id,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      await this.creditCardInvoiceItemRepository.save(item);
+
+      const nextItemIds = invoice.itemIds.includes(item.id)
+        ? invoice.itemIds
+        : [...invoice.itemIds, item.id];
+      const nextCalculatedAmountCents = invoice.calculatedAmountCents + item.amountCents;
+
+      const commitment = await this.createOrUpdateInvoiceCommitment({
+        transaction,
+        invoice,
+        amountCents: nextCalculatedAmountCents,
+        recognitionLedgerEntryId,
+      });
+
+      await this.creditCardInvoiceRepository.save({
+        ...invoice,
+        calculatedAmountCents: nextCalculatedAmountCents,
+        finalAmountCents: nextCalculatedAmountCents,
+        itemIds: nextItemIds,
+        commitmentId: commitment.id,
+        updatedAt: now,
+      });
+    }
+  }
+
+  private async getOrCreateInvoice(input: {
+    transaction: BusinessTransaction;
+    invoiceCycle: {
+      invoicePeriod: string;
+      closingDate: string;
+      dueDate: string;
+    };
+  }): Promise<CreditCardInvoice> {
+    const { transaction, invoiceCycle } = input;
+    const existing = await this.creditCardInvoiceRepository.findByCardAndPeriod(
+      transaction.controlCenterId,
+      transaction.creditCardId!,
+      invoiceCycle.invoicePeriod,
+    );
+    if (existing) {
+      return existing;
+    }
+
+    const now = new Date().toISOString();
+    return {
+      id: crypto.randomUUID(),
+      controlCenterId: transaction.controlCenterId,
+      creditCardId: transaction.creditCardId!,
+      sourceEventKey: this.buildInvoiceSourceEventKey(
+        transaction.controlCenterId,
+        transaction.creditCardId!,
+        invoiceCycle.invoicePeriod,
+      ),
+      invoicePeriod: invoiceCycle.invoicePeriod,
+      closingDate: invoiceCycle.closingDate,
+      dueDate: invoiceCycle.dueDate,
+      calculatedAmountCents: 0,
+      finalAmountCents: 0,
+      itemIds: [],
+      commitmentId: undefined,
+      status: 'draft',
+      createdAt: now,
+      updatedAt: now,
+    };
+  }
+
+  private async createOrUpdateInvoiceCommitment(input: {
+    transaction: BusinessTransaction;
+    invoice: CreditCardInvoice;
+    amountCents: number;
+    recognitionLedgerEntryId: ID;
+  }): Promise<Commitment> {
+    const { transaction, invoice, amountCents, recognitionLedgerEntryId } = input;
+    const now = new Date().toISOString();
+    const sourceEventKey = `${invoice.sourceEventKey}:commitment`;
+    const existingBySourceEventKey = await this.commitmentRepository.findBySourceEventKey(
+      transaction.controlCenterId,
+      sourceEventKey,
+    );
+
+    if (existingBySourceEventKey) {
+      const recognitionLinkAlreadyExists = existingBySourceEventKey.ledgerLinks.some(
+        (link) =>
+          link.relation === 'recognition' && link.ledgerEntryId === recognitionLedgerEntryId,
+      );
+      const nextLedgerLinks = recognitionLinkAlreadyExists
+        ? existingBySourceEventKey.ledgerLinks
+        : [
+            ...existingBySourceEventKey.ledgerLinks,
+            {
+              ledgerEntryId: recognitionLedgerEntryId,
+              relation: 'recognition' as const,
+              createdAt: now,
+            },
+          ];
+
+      const updated: Commitment = {
+        ...existingBySourceEventKey,
+        description: `Fatura cartao ${invoice.creditCardId} - ${invoice.invoicePeriod}`,
+        amountCents,
+        originalAmountCents: amountCents,
+        documentDate: transaction.documentDate,
+        dueDate: invoice.dueDate,
+        plannedSettlementDate: invoice.dueDate,
+        sourceType: 'credit_card_invoice',
+        sourceId: invoice.id,
+        counterpartyId: this.resolveInvoiceCounterpartyId(invoice.creditCardId),
+        originTransactionId: undefined,
+        originLedgerEntryId: undefined,
+        settlementDate: undefined,
+        settledAmountCents: undefined,
+        settlementDifferenceCents: undefined,
+        settlementDifferenceReason: undefined,
+        ledgerLinks: nextLedgerLinks,
+        status: 'confirmed',
+        updatedAt: now,
+      };
+      await this.commitmentRepository.save(updated);
+      return updated;
+    }
+
+    const created: Commitment = {
+      id: invoice.commitmentId ?? crypto.randomUUID(),
+      controlCenterId: transaction.controlCenterId,
+      type: 'payable',
+      status: 'confirmed',
+      description: `Fatura cartao ${invoice.creditCardId} - ${invoice.invoicePeriod}`,
+      amountCents,
+      counterpartyId: this.resolveInvoiceCounterpartyId(invoice.creditCardId),
+      documentDate: transaction.documentDate,
+      dueDate: invoice.dueDate,
+      plannedSettlementDate: invoice.dueDate,
+      settlementDate: undefined,
+      expectedAccountId: transaction.expectedSettlementAccountId,
+      settledAccountId: undefined,
+      sourceType: 'credit_card_invoice',
+      sourceId: invoice.id,
+      sourceEventKey,
+      originTransactionId: undefined,
+      originLedgerEntryId: undefined,
+      installmentGroupId: undefined,
+      installmentNumber: undefined,
+      installmentCount: undefined,
+      installmentPeriodicity: undefined,
+      ledgerLinks: [
+        {
+          ledgerEntryId: recognitionLedgerEntryId,
+          relation: 'recognition',
+          createdAt: now,
+        },
+      ],
+      originalAmountCents: amountCents,
+      settledAmountCents: undefined,
+      settlementDifferenceCents: undefined,
+      settlementDifferenceReason: undefined,
+      createdAt: now,
+      updatedAt: now,
+      createdByUserId: transaction.createdByUserId,
+      notes: `Compromisso aberto consolidado da fatura ${invoice.invoicePeriod}.`,
+    };
+
+    await this.commitmentRepository.save(created);
+    return created;
+  }
+
   private resolveCommitmentType(type: BusinessTransaction['type']): Commitment['type'] {
     if (type === 'sale') {
       return 'receivable';
@@ -237,6 +479,25 @@ export class CreateBusinessTransactionUseCase {
 
   private buildCommitmentSourceEventKey(transactionSourceEventKey: string, installmentNumber: number): string {
     return `${transactionSourceEventKey}:commitment:${installmentNumber}`;
+  }
+
+  private buildCreditCardInvoiceItemSourceEventKey(
+    transactionSourceEventKey: string,
+    installmentNumber: number,
+  ): string {
+    return `${transactionSourceEventKey}:invoice-item:${installmentNumber}`;
+  }
+
+  private buildInvoiceSourceEventKey(
+    controlCenterId: string,
+    creditCardId: string,
+    invoicePeriod: string,
+  ): string {
+    return `invoice:${controlCenterId}:${creditCardId}:${invoicePeriod}`;
+  }
+
+  private resolveInvoiceCounterpartyId(creditCardId: string): ID {
+    return `credit-card-issuer:${creditCardId}`;
   }
 
   private buildInstallmentAmounts(input: {

@@ -27,6 +27,8 @@ export interface BusinessTransaction {
   settlementMethod: SettlementMethod;
   expectedSettlementAccountId?: ID;
   creditCardId?: ID;
+  creditCardClosingDay?: number;
+  creditCardDueDay?: number;
   installmentCount: number;
   installmentPeriodicity?: InstallmentPeriodicity;
   recognitionLedgerEntryId?: ID;
