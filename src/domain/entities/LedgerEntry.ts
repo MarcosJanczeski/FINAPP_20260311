@@ -17,6 +17,7 @@ export interface LedgerEntry {
     | 'account_opening_adjustment'
     | 'recurrence_recognition'
     | 'business_transaction_recognition'
+    | 'business_transaction_settlement'
     | 'recurrence_settlement_adjustment'
     | 'recurrence_settlement'
     | 'recurrence_reversal'

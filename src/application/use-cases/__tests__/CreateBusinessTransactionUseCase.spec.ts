@@ -208,6 +208,18 @@ function createRootLedgerAccounts(controlCenterId = 'cc-1'): LedgerAccount[] {
       status: 'active',
       createdAt,
     },
+    {
+      id: 'acc-1',
+      controlCenterId,
+      code: 'ATIVO:DISPONIBILIDADES',
+      name: 'Ativo - Disponibilidades',
+      kind: 'asset',
+      accountRole: 'posting',
+      parentLedgerAccountId: 'root-asset',
+      isSystem: true,
+      status: 'active',
+      createdAt,
+    },
   ];
 }
 
@@ -241,7 +253,7 @@ function createInput(
 }
 
 describe('CreateBusinessTransactionUseCase', () => {
-  it('cria transacao valida, persiste e nasce confirmed com campos iniciais consistentes', async () => {
+  it('cria transacao a vista valida com reconhecimento e liquidacao imediata consistentes', async () => {
     const repository = new InMemoryBusinessTransactionRepository([]);
     const commitmentRepository = new InMemoryCommitmentRepository([]);
     const ledgerAccountRepository = new InMemoryLedgerAccountRepository(createRootLedgerAccounts());
@@ -263,15 +275,21 @@ describe('CreateBusinessTransactionUseCase', () => {
     const recognitionEntry = created.recognitionLedgerEntryId
       ? await ledgerEntryRepository.getById(created.recognitionLedgerEntryId)
       : null;
+    const settlementEntry = created.settlementLedgerEntryId
+      ? await ledgerEntryRepository.getById(created.settlementLedgerEntryId)
+      : null;
 
     expect(saved).toBeTruthy();
     expect(created.status).toBe('confirmed');
     expect(created.commitmentIds).toEqual([]);
     expect(created.recognitionLedgerEntryId).toBeTruthy();
-    expect(created.settlementLedgerEntryId).toBeUndefined();
+    expect(created.settlementLedgerEntryId).toBeTruthy();
     expect(recognitionEntry).toBeTruthy();
+    expect(settlementEntry).toBeTruthy();
     expect(recognitionEntry?.referenceType).toBe('business_transaction_recognition');
     expect(recognitionEntry?.referenceId).toBe(created.id);
+    expect(settlementEntry?.referenceType).toBe('business_transaction_settlement');
+    expect(settlementEntry?.referenceId).toBe(created.id);
   });
 
   it('bloqueia duplicidade logica por (controlCenterId, sourceEventKey)', async () => {
@@ -466,7 +484,28 @@ describe('CreateBusinessTransactionUseCase', () => {
     ).rejects.toThrow('creditCardId e obrigatorio quando settlementMethod = credit_card.');
   });
 
-  it('gera reconhecimento para contexto a vista, a prazo e cartao sem liquidar caixa neste step', async () => {
+  it('falha quando operacao a vista nao informa conta de liquidacao esperada', async () => {
+    const repository = new InMemoryBusinessTransactionRepository([]);
+    const commitmentRepository = new InMemoryCommitmentRepository([]);
+    const useCase = new CreateBusinessTransactionUseCase(
+      repository,
+      commitmentRepository,
+      new InMemoryLedgerAccountRepository(createRootLedgerAccounts()),
+      new InMemoryLedgerEntryRepository([]),
+    );
+
+    await expect(
+      useCase.execute(
+        createInput({
+          sourceEventKey: 'manual:business-transaction:cash-without-account:1',
+          settlementMethod: 'cash',
+          expectedSettlementAccountId: '   ',
+        }),
+      ),
+    ).rejects.toThrow('expectedSettlementAccountId e obrigatoria para liquidacao imediata.');
+  });
+
+  it('gera settlement imediato apenas para a vista e mantem a prazo/cartao sem settlement neste step', async () => {
     const repository = new InMemoryBusinessTransactionRepository([]);
     const commitmentRepository = new InMemoryCommitmentRepository([]);
     const ledgerEntryRepository = new InMemoryLedgerEntryRepository([]);
@@ -498,11 +537,11 @@ describe('CreateBusinessTransactionUseCase', () => {
     );
 
     const entries = await ledgerEntryRepository.listByControlCenter('cc-1');
-    expect(entries).toHaveLength(3);
+    expect(entries).toHaveLength(4);
     expect(cash.recognitionLedgerEntryId).toBeTruthy();
     expect(term.recognitionLedgerEntryId).toBeTruthy();
     expect(card.recognitionLedgerEntryId).toBeTruthy();
-    expect(cash.settlementLedgerEntryId).toBeUndefined();
+    expect(cash.settlementLedgerEntryId).toBeTruthy();
     expect(term.settlementLedgerEntryId).toBeUndefined();
     expect(card.settlementLedgerEntryId).toBeUndefined();
 

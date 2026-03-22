@@ -92,6 +92,19 @@ export class CreateBusinessTransactionUseCase {
     });
     await this.ledgerEntryRepository.save(recognitionLedgerEntry);
 
+    const settlementLedgerEntry = await this.buildImmediateSettlementLedgerEntry({
+      transaction: created,
+      recognitionLedgerEntry,
+    });
+    if (settlementLedgerEntry) {
+      await assertPostingLedgerLines({
+        controlCenterId: controlCenterId,
+        lines: settlementLedgerEntry.lines,
+        ledgerAccountRepository: this.ledgerAccountRepository,
+      });
+      await this.ledgerEntryRepository.save(settlementLedgerEntry);
+    }
+
     const commitmentIds = await this.createDerivedCommitments({
       transaction: created,
       recognitionLedgerEntryId: recognitionLedgerEntry.id,
@@ -100,6 +113,7 @@ export class CreateBusinessTransactionUseCase {
     const persisted: BusinessTransaction = {
       ...created,
       recognitionLedgerEntryId: recognitionLedgerEntry.id,
+      settlementLedgerEntryId: settlementLedgerEntry?.id,
       commitmentIds,
       updatedAt: new Date().toISOString(),
     };
@@ -329,6 +343,66 @@ export class CreateBusinessTransactionUseCase {
       ],
       createdByUserId: transaction.createdByUserId,
       reason: 'Reconhecimento inicial de BusinessTransaction',
+      createdAt: new Date().toISOString(),
+    };
+  }
+
+  private async buildImmediateSettlementLedgerEntry(input: {
+    transaction: BusinessTransaction;
+    recognitionLedgerEntry: LedgerEntry;
+  }): Promise<LedgerEntry | null> {
+    const { transaction } = input;
+
+    if (transaction.settlementMethod !== 'cash') {
+      return null;
+    }
+
+    if (!transaction.expectedSettlementAccountId) {
+      throw new Error('expectedSettlementAccountId e obrigatoria para liquidacao imediata.');
+    }
+
+    const liabilityAccount = await this.ensureSystemLedgerAccount(
+      transaction.controlCenterId,
+      'PASSIVO:OBRIGACOES',
+      'Passivo - Obrigacoes',
+      'liability',
+    );
+    const receivableAccount = await this.ensureSystemLedgerAccount(
+      transaction.controlCenterId,
+      'ATIVO:RECEBIVEIS',
+      'Ativo - Recebiveis',
+      'asset',
+    );
+
+    const outflowType = this.isOutflowType(transaction.type);
+    const debitAccount = outflowType
+      ? liabilityAccount.id
+      : transaction.expectedSettlementAccountId;
+    const creditAccount = outflowType
+      ? transaction.expectedSettlementAccountId
+      : receivableAccount.id;
+
+    return {
+      id: crypto.randomUUID(),
+      controlCenterId: transaction.controlCenterId,
+      date: transaction.documentDate,
+      description: `Liquidacao imediata transacao - ${transaction.description}`,
+      referenceType: 'business_transaction_settlement',
+      referenceId: transaction.id,
+      lines: [
+        {
+          ledgerAccountId: debitAccount,
+          debitCents: transaction.amountCents,
+          creditCents: 0,
+        },
+        {
+          ledgerAccountId: creditAccount,
+          debitCents: 0,
+          creditCents: transaction.amountCents,
+        },
+      ],
+      createdByUserId: transaction.createdByUserId,
+      reason: 'Liquidacao imediata de BusinessTransaction a vista',
       createdAt: new Date().toISOString(),
     };
   }
