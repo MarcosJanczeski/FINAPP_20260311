@@ -287,6 +287,7 @@ Diretriz de orquestração (commitments):
 * orquestração: `BusinessTransaction` -> reconhecimento contábil (`LedgerEntry`) -> `Commitment(s)` derivados
 * liquidação e estorno permanecem no ciclo do `Commitment` aberto
 * recorrências permanecem fluxo separado
+* em cartão, a compra individual reconhece o fato e compõe fatura prevista; o commitment aberto relevante de caixa permanece no nível da fatura
 
 Contrato mínimo de rastreabilidade (alvo de implementação incremental):
 
@@ -306,6 +307,21 @@ Commitment (metadados de origem):
 * installmentNumber
 * installmentCount
 * installmentPeriodicity
+
+Contrato mínimo adicional para cartão/fatura (evolução incremental):
+
+CreditCardInvoice:
+
+* id
+* controlCenterId
+* creditCardId
+* invoicePeriod
+* closingDate
+* dueDate
+* calculatedAmountCents
+* finalAmountCents
+* status (`draft` | `reviewing` | `conciled`)
+* commitmentId
 
 ---
 
@@ -583,6 +599,8 @@ Estas regras devem ser respeitadas desde o MVP.
 * projeção deve consumir `PlanningEvent` e nunca reescrever histórico real
 * saldo real muda apenas por transação real; projeção não altera saldo contábil/operacional real
 * integridade de cartão: compra reconhece fato gerador e compõe fatura; pagamento de fatura reduz caixa
+* fatura calculada por regra canônica (`closingDay`/`dueDay`) é previsão operacional inicial
+* conciliação de fatura estabelece valor final operacional sem quebrar histórico aditivo
 * trilha de auditoria obrigatória para eventos gerados (`sourceId`/`sourceEventKey`/referências)
 * prevenir dupla contagem por desenho (compra x fatura, parcela x compra cheia, recorrência duplicada)
 * ajustes financeiros devem ser aditivos (novos registros), sem sobrescrever histórico de ledger

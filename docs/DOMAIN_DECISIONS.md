@@ -185,6 +185,9 @@ O sistema possui 4 entradas canônicas:
 * não afeta caixa no ato
 * liquidação ocorre no pagamento da fatura
 * obrigação aberta relevante para caixa fica no nível da fatura, não da compra individual
+* alocação automática por regra de fechamento/vencimento representa fatura prevista (calculada), não verdade final definitiva
+* fatura conciliada representa a verdade operacional final antes da liquidação
+* o modelo deve permitir divergência controlada entre fatura calculada e fatura final sem quebrar invariantes
 
 ## 5.4 Transferência
 
@@ -278,6 +281,8 @@ Cartão:
 * reconhece na compra (fato gerador)
 * compra compõe fatura futura
 * liquida no pagamento da fatura
+* a fatura nasce com valor calculado e pode ser ajustada por conciliação (itens/valores/remanejamento)
+* o commitment da fatura deve refletir o valor final conciliado
 
 ---
 

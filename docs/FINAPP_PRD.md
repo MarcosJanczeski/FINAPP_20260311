@@ -129,6 +129,7 @@ Diretriz de entrada operacional (módulo compromissos):
 * recorrência permanece fluxo distinto
 * rastreabilidade mínima obrigatória: vínculo explícito entre `BusinessTransaction`, `LedgerEntry` de reconhecimento e `Commitment(s)` gerados
 * em cartão de crédito, compra individual gera reconhecimento e compõe fatura futura; o commitment aberto relevante para caixa deve ficar no nível da fatura, não da compra individual
+* fatura inicialmente calculada é previsão operacional; após conferência/importação, a fatura conciliada passa a representar a realidade financeira final
 
 ---
 
@@ -490,6 +491,12 @@ valor
 
 Os lançamentos são apresentados para revisão.
 
+Semântica operacional:
+
+* a fatura inicial exibida pelo sistema pode ser uma previsão baseada nas compras registradas
+* importação/conferência permite validar e ajustar itens e valores
+* a fatura conciliada representa o valor final operacional para liquidação
+
 Critério obrigatório de conciliação:
 
 ```text
@@ -801,6 +808,11 @@ Mas o fluxo de caixa considera apenas:
 ```
 pagamento da fatura
 ```
+
+Regra complementar:
+
+* fatura calculada por fechamento/vencimento não é verdade definitiva por si só
+* a verdade final para liquidação de caixa é a fatura conciliada
 
 ---
 
