@@ -4,6 +4,7 @@ export type CommitmentType = 'payable' | 'receivable';
 export type CommitmentStatus = 'confirmed' | 'settled';
 export type CommitmentSourceType =
   | 'manual'
+  | 'business_transaction'
   | 'recurrence_confirmation'
   | 'credit_card_purchase'
   | 'credit_card_invoice'
@@ -42,6 +43,12 @@ export interface Commitment {
   sourceType: CommitmentSourceType;
   sourceId?: ID;
   sourceEventKey: string;
+  originTransactionId?: ID;
+  originLedgerEntryId?: ID;
+  installmentGroupId?: ID;
+  installmentNumber?: number;
+  installmentCount?: number;
+  installmentPeriodicity?: 'monthly' | 'weekly' | 'biweekly' | 'yearly' | 'other';
   ledgerLinks: CommitmentLedgerLink[];
   originalAmountCents: number;
   settledAmountCents?: number;

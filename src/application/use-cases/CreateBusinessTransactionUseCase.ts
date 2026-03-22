@@ -1,7 +1,9 @@
 import type { CreateBusinessTransactionInput } from '../dto/BusinessTransactionInput';
 import type { BusinessTransaction } from '../../domain/entities/BusinessTransaction';
+import type { Commitment } from '../../domain/entities/Commitment';
 import type { LedgerAccount } from '../../domain/entities/LedgerAccount';
 import type { LedgerEntry } from '../../domain/entities/LedgerEntry';
+import type { CommitmentRepository } from '../../domain/repositories/CommitmentRepository';
 import type { LedgerAccountRepository } from '../../domain/repositories/LedgerAccountRepository';
 import type { LedgerEntryRepository } from '../../domain/repositories/LedgerEntryRepository';
 import type { BusinessTransactionRepository } from '../../domain/repositories/BusinessTransactionRepository';
@@ -18,6 +20,7 @@ import { assertPostingLedgerLines } from '../services/ledgerPostingGuard';
 export class CreateBusinessTransactionUseCase {
   constructor(
     private readonly businessTransactionRepository: BusinessTransactionRepository,
+    private readonly commitmentRepository: CommitmentRepository,
     private readonly ledgerAccountRepository: LedgerAccountRepository,
     private readonly ledgerEntryRepository: LedgerEntryRepository,
   ) {}
@@ -89,14 +92,188 @@ export class CreateBusinessTransactionUseCase {
     });
     await this.ledgerEntryRepository.save(recognitionLedgerEntry);
 
+    const commitmentIds = await this.createDerivedCommitments({
+      transaction: created,
+      recognitionLedgerEntryId: recognitionLedgerEntry.id,
+    });
+
     const persisted: BusinessTransaction = {
       ...created,
       recognitionLedgerEntryId: recognitionLedgerEntry.id,
+      commitmentIds,
       updatedAt: new Date().toISOString(),
     };
 
     await this.businessTransactionRepository.save(persisted);
     return persisted;
+  }
+
+  private async createDerivedCommitments(input: {
+    transaction: BusinessTransaction;
+    recognitionLedgerEntryId: ID;
+  }): Promise<ID[]> {
+    const { transaction, recognitionLedgerEntryId } = input;
+
+    // Cartao compoe fatura futura; neste step nao gera commitment aberto por compra individual.
+    if (transaction.settlementMethod === 'credit_card') {
+      return [];
+    }
+
+    // Operacao a vista (caixa) nao gera commitment aberto.
+    if (transaction.settlementMethod === 'cash') {
+      return [];
+    }
+
+    const dueDate = transaction.dueDate;
+    if (!dueDate) {
+      return [];
+    }
+
+    const installmentCount = transaction.installmentCount;
+    if (installmentCount <= 0) {
+      return [];
+    }
+
+    const installmentDates = this.buildInstallmentDates({
+      firstDueDate: dueDate,
+      installmentCount,
+      installmentPeriodicity: transaction.installmentPeriodicity,
+    });
+    const installmentAmounts = this.buildInstallmentAmounts({
+      totalAmountCents: transaction.amountCents,
+      installmentCount,
+    });
+
+    const commitmentIds: ID[] = [];
+    const installmentGroupId = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    for (let index = 0; index < installmentCount; index += 1) {
+      const installmentNumber = index + 1;
+      const sourceEventKey = this.buildCommitmentSourceEventKey(transaction.sourceEventKey, installmentNumber);
+
+      const existing = await this.commitmentRepository.findBySourceEventKey(
+        transaction.controlCenterId,
+        sourceEventKey,
+      );
+      if (existing) {
+        throw new Error('Ja existe commitment derivado para este sourceEventKey de parcela.');
+      }
+
+      const amountCents = installmentAmounts[index];
+      const dueDateByInstallment = installmentDates[index];
+      const commitment: Commitment = {
+        id: crypto.randomUUID(),
+        controlCenterId: transaction.controlCenterId,
+        type: this.resolveCommitmentType(transaction.type),
+        status: 'confirmed',
+        description:
+          installmentCount > 1
+            ? `${transaction.description} (parcela ${installmentNumber}/${installmentCount})`
+            : transaction.description,
+        amountCents,
+        counterpartyId: transaction.counterpartyId,
+        documentDate: transaction.documentDate,
+        dueDate: dueDateByInstallment,
+        plannedSettlementDate: dueDateByInstallment,
+        settlementDate: undefined,
+        expectedAccountId: transaction.expectedSettlementAccountId,
+        settledAccountId: undefined,
+        sourceType: 'business_transaction',
+        sourceId: transaction.id,
+        sourceEventKey,
+        originTransactionId: transaction.id,
+        originLedgerEntryId: recognitionLedgerEntryId,
+        installmentGroupId,
+        installmentNumber,
+        installmentCount,
+        installmentPeriodicity:
+          transaction.installmentPeriodicity ??
+          (installmentCount > 1 ? 'monthly' : undefined),
+        ledgerLinks: [
+          {
+            ledgerEntryId: recognitionLedgerEntryId,
+            relation: 'recognition',
+            createdAt: now,
+          },
+        ],
+        originalAmountCents: amountCents,
+        settledAmountCents: undefined,
+        settlementDifferenceCents: undefined,
+        settlementDifferenceReason: undefined,
+        createdAt: now,
+        updatedAt: now,
+        createdByUserId: transaction.createdByUserId,
+        notes: transaction.notes,
+      };
+
+      await this.commitmentRepository.save(commitment);
+      commitmentIds.push(commitment.id);
+    }
+
+    return commitmentIds;
+  }
+
+  private resolveCommitmentType(type: BusinessTransaction['type']): Commitment['type'] {
+    if (type === 'sale') {
+      return 'receivable';
+    }
+    return 'payable';
+  }
+
+  private buildCommitmentSourceEventKey(transactionSourceEventKey: string, installmentNumber: number): string {
+    return `${transactionSourceEventKey}:commitment:${installmentNumber}`;
+  }
+
+  private buildInstallmentAmounts(input: {
+    totalAmountCents: number;
+    installmentCount: number;
+  }): number[] {
+    const baseAmount = Math.floor(input.totalAmountCents / input.installmentCount);
+    const remainder = input.totalAmountCents - baseAmount * input.installmentCount;
+
+    return Array.from({ length: input.installmentCount }, (_, index) =>
+      index === input.installmentCount - 1 ? baseAmount + remainder : baseAmount,
+    );
+  }
+
+  private buildInstallmentDates(input: {
+    firstDueDate: string;
+    installmentCount: number;
+    installmentPeriodicity: BusinessTransaction['installmentPeriodicity'];
+  }): string[] {
+    if (input.installmentCount === 1) {
+      return [input.firstDueDate];
+    }
+
+    const periodicity = input.installmentPeriodicity ?? 'monthly';
+    const first = new Date(input.firstDueDate);
+    if (Number.isNaN(first.getTime())) {
+      throw new Error('dueDate invalida para gerar parcelas.');
+    }
+
+    return Array.from({ length: input.installmentCount }, (_, index) => {
+      const date = new Date(first);
+
+      switch (periodicity) {
+        case 'weekly':
+          date.setUTCDate(date.getUTCDate() + index * 7);
+          break;
+        case 'biweekly':
+          date.setUTCDate(date.getUTCDate() + index * 14);
+          break;
+        case 'yearly':
+          date.setUTCFullYear(date.getUTCFullYear() + index);
+          break;
+        case 'other':
+        case 'monthly':
+        default:
+          date.setUTCMonth(date.getUTCMonth() + index);
+          break;
+      }
+
+      return date.toISOString();
+    });
   }
 
   private async buildRecognitionLedgerEntry(
