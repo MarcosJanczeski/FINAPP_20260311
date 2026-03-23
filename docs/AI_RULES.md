@@ -12,7 +12,9 @@ The system behavior is defined by:
 
 * docs/ESSENCIAL.md
 * docs/FINAPP_PRD.md
+* docs/DOMAIN_DECISIONS.md
 * docs/ARCHITECTURE_MVP.md
+* docs/DEV_PROTOCOL.md
 
 If implementation conflicts with these documents, the AI must stop and ask for clarification.
 
@@ -67,9 +69,20 @@ When implementation reveals inconsistencies or missing information, the AI shoul
 
 * ESSENCIAL.md
 * FINAPP_PRD.md
+* DOMAIN_DECISIONS.md
 * ARCHITECTURE_MVP.md
 
 Documentation must always remain aligned with the implemented system behavior.
+
+---
+
+## Development protocol compliance
+
+All development must follow:
+
+* docs/DEV_PROTOCOL.md
+
+This protocol defines the official AI operational flow (baby steps).
 
 ---
 

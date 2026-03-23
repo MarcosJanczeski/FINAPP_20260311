@@ -19,6 +19,7 @@ As regras permanentes para agentes de IA durante o desenvolvimento estão em:
 
 ```text
 docs/AI_RULES.md
+docs/DEV_PROTOCOL.md
 ```
 
 ## Objetivo deste documento

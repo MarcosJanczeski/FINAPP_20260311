@@ -18,6 +18,7 @@ Referências obrigatórias:
 * `docs/FINAPP_PRD.md`
 * `docs/ARCHITECTURE_MVP.md`
 * `docs/AI_RULES.md`
+* `docs/DEV_PROTOCOL.md` (protocolo de desenvolvimento; não altera precedência de domínio)
 
 Regra:
 
