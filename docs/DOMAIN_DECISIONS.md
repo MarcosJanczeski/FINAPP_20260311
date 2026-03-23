@@ -161,6 +161,13 @@ Ao confirmar uma `BusinessTransaction`:
 * geram-se zero, um ou vários `Commitment` derivados
 * mantém-se rastreabilidade explícita entre origem, reconhecimento e obrigações abertas
 
+## 4B.3 Entrada operacional principal (tela)
+
+* a entrada operacional principal deve ser uma tela de `BusinessTransaction` (nome de produto: "Transação Financeira")
+* `Commitment` permanece entidade derivada, não ponto de entrada primário
+* a tela captura intenção operacional simples; o sistema orquestra reconhecimento, liquidação imediata e derivação de obrigações
+* campos técnicos (`ledger`, `sourceEventKey`, detalhes de `commitment`) não devem ser expostos como entrada primária ao usuário
+
 ---
 
 # 5. Portas de Entrada do Sistema

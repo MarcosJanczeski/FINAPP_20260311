@@ -289,6 +289,13 @@ Diretriz de orquestração (commitments):
 * recorrências permanecem fluxo separado
 * em cartão, a compra individual reconhece o fato e compõe fatura prevista; o commitment aberto relevante de caixa permanece no nível da fatura
 
+Diretriz funcional da entrada operacional:
+
+* a tela principal de entrada deve criar `BusinessTransaction` (não `Commitment` direto)
+* forma de pagamento define a orquestração de saída (`à vista`, `a prazo`, `cartão`)
+* campos técnicos do domínio contábil permanecem internos à camada de aplicação/domínio
+* ajustes de parcelamento (valor/vencimento por parcela) devem ser validados na aplicação e persistidos sem quebrar rastreabilidade
+
 Contrato mínimo de rastreabilidade (alvo de implementação incremental):
 
 BusinessTransaction:

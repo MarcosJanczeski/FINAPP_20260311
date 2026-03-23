@@ -8,6 +8,7 @@
 - [ ] Commitments: introduzir entidade e contratos de `BusinessTransaction` com rastreabilidade mínima
 - [ ] Commitments: criar use case de registro da transação (fato gerador)
 - [ ] Commitments: orquestrar reconhecimento contábil + geração de commitments derivados
+- [x] Commitments UI: consolidar especificação funcional da tela principal "Transação Financeira" (entrada por `BusinessTransaction`)
 - [ ] Commitments UI: migrar tela atual para fluxo por fato gerador
 - [ ] Projection: revisar impactos após migração do fluxo de origem
 

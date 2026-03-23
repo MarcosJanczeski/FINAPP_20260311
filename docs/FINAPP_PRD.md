@@ -752,6 +752,85 @@ Receber valor
 
 ---
 
+# 13B. Tela Principal de Entrada Operacional
+
+Nome funcional da tela:
+
+```text
+Transação Financeira
+```
+
+Objetivo:
+
+* registrar o fato gerador operacional (`BusinessTransaction`) com simplicidade
+* permitir que o sistema orquestre automaticamente reconhecimento contábil, liquidação imediata quando aplicável e derivação de obrigações abertas
+* manter `Commitment` como resultado derivado, não como entrada primária
+
+Campos mínimos:
+
+* descrição
+* valor
+* contrapartida (`counterparty`, obrigatório)
+* data do documento/competência (`documentDate`)
+* forma de pagamento:
+  * à vista
+  * a prazo
+  * cartão de crédito
+
+Comportamento por forma de pagamento:
+
+À vista:
+
+* exige conta de liquidação
+* reconhece e liquida no mesmo fluxo
+* não gera commitment aberto
+
+A prazo (não-cartão):
+
+* permite número de parcelas (default 1)
+* permite periodicidade (default mensal)
+* gera 1..N commitments derivados quando existir obrigação/direito em aberto
+
+Cartão de crédito:
+
+* exige seleção do cartão
+* não gera commitment aberto da compra individual
+* compra/parcela compõe faturas futuras
+* obrigação aberta relevante para caixa permanece no nível da fatura
+
+Parcelamento e ajuste manual:
+
+A prazo (não-cartão):
+
+* usuário pode ajustar valor por parcela
+* usuário pode ajustar vencimento por parcela
+* soma das parcelas deve ser igual ao valor total da transação
+* vencimentos devem ser válidos
+* continuam sendo commitments irmãos derivados do mesmo fato gerador
+
+Cartão de crédito:
+
+* usuário pode ajustar valor das parcelas
+* usuário pode ajustar a fatura da primeira parcela (ou vencimento equivalente da primeira fatura)
+* parcelas seguintes seguem a sequência de faturas futuras
+* compra individual continua sem commitment aberto de caixa
+* fluxo preserva: compra reconhece, parcela compõe fatura, fatura é obrigação aberta de caixa
+
+Diretrizes de UX:
+
+* tela simples, mobile-first
+* não expor na entrada primária: `Commitment`, `LedgerEntry`, `sourceEventKey`, `plannedSettlementDate`
+* campos relacionais seguem padrão: selecionar, filtrar, adicionar com botão `+`
+* campos monetários alinhados à direita e com máscara sem vírgula manual
+
+Impacto esperado em módulos derivados:
+
+* commitments: tornam-se artefato derivado por orquestração, com preservação de rastreabilidade
+* cartões/faturas: seguem regra de composição por fatura e conciliação obrigatória
+* projeção: mantém invariantes (sem caixa na compra do cartão; caixa no pagamento da fatura)
+
+---
+
 # 14. Compromissos
 
 Controle de:
